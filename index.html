@@ -90,12 +90,14 @@ div#totalenergy
 .bttn {
   background-color: gray;
   color: white;
- -moz-border-radius: 5px;
- -webkit-border-radius: 5px;
- border-radius: 5px;
- border: 1px solid black;
- padding: 3px;
- margin:50;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  border-radius: 5px;
+  border: 1px solid black;
+  padding: 3px;
+  display:inline-block;
+  width:160px;
+  text-align: center;
 }
 .bttn:hover {
   background-color: darkgreen;
@@ -104,12 +106,6 @@ div#totalenergy
 div#controls .addcharge  {
   pointer-events:all;
 }
-
-a.addcharge:link    { color: white; text-decoration:none;font-family: sans-serif;}
-a.addcharge:visited { color: white; text-decoration:none;font-family: sans-serif;}
-a.addcharge:hover   { color: white; text-decoration:none;font-family: sans-serif;}
-a.addcharge:active  { color: white; text-decoration:none;font-family: sans-serif;}
-
 
 .round-button {
 	width:25px;
@@ -184,9 +180,13 @@ a.addcharge:active  { color: white; text-decoration:none;font-family: sans-serif
 </head>
 <body>
   <div id="everything">
-    <div>
+    
+  <!-- The main viewing area is a canvas. -->
+  <div>
     <div class="notpad" id="sim" ></div>
   </div>
+  
+  <!-- controls -->
     <div class="controls" id="controls">
       <div style="display:inline-block">
         <div class="round-button"><div class="round-button-circle"><span q="1"  class="btn addcharge" href="#">+1</span></div></div>
@@ -199,15 +199,19 @@ a.addcharge:active  { color: white; text-decoration:none;font-family: sans-serif
 
     <div style="display:inline-block">
     
-      <div style="margin-bottom:10px"><a class="bttn" id="do-popup" href="#">More Help</a></div>
-      <div style="margin-bottom:10px"><a class="bttn" id="downloadlink" href='#' download="FieldLines.png">Download Image</a></div>
-      <div style="margin-bottom:10px"><a class="bttn" id="linktothis" href='#'>Link to this arrangement</a></div>
+      <div style="margin:5px"><a class="bttn" id="do-popup" href="#">More Help</a></div>
+      <div style="margin:5px"><a class="bttn" id="downloadlink" href='#' download="FieldLines.png">Download Image</a></div>
+      <div style="margin:5px"><a class="bttn" id="linktothis" href='#'>Link to this arrangement</a></div>
     </div>
     
     <div style="display:inline-block">
     
      
     </div>
+
+
+
+    <!-- Help and info -->
 
     <div style="display:inline-block">
         <b>Electric Field Lines</b><br/>
@@ -309,6 +313,9 @@ a.addcharge:active  { color: white; text-decoration:none;font-family: sans-serif
     This simulation could probably be improved by iterating on the field lines, and backtracking foward and back between
     charges to try to even out the spacing, but this would make the simulation non-responsive.  
   </p>  
+  <p>
+    Source code is available for forking at <a href="https://github.com/nathanieltagg/fieldlines">https://github.com/nathanieltagg/fieldlines</a>
+  </p>
   <p>
     Nathaniel Tagg, Dec 2014
   </p>
