@@ -1,0 +1,320 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     xml:lang="en">
+<head> 
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+ 
+<title>Electric Field</title>
+
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+
+<!-- firebug lite, for debugging on random browswers. -->
+<!-- <script type='text/javascript' 
+        src='http://getfirebug.com/releases/lite/1.2/firebug-lite-compressed.js'></script> -->
+<script type="text/javascript" charset="utf-8">
+  if (window['loadFirebugConsole']) {
+      window.loadFirebugConsole();
+  } else {
+    if (!window['console'])   window.console = {};
+    if (!window.console['time']      ) window.console.time        = function(){};
+    if (!window.console['timeEnd']   ) window.console.timeEnd     = function(){};
+    if (!window.console['debug']     ) window.console.debug       = function(){};
+    if (!window.console['info']      ) window.console.info        = function(){};
+    if (!window.console['log']       ) window.console.log         = function(){};
+    if (!window.console['warn']      ) window.console.warn        = function(){};
+    if (!window.console['profile']   ) window.console.profile     = function(){};
+    if (!window.console['profileEnd']) window.console.profileEnd  = function(){};
+    if (!window.console['trace']     ) window.console.trace       = function(){};
+    if (!window.console['error']     ) window.console.error       = function(){};
+  }
+</script>
+<script type="text/javascript" src="script.js"></script>
+<script type="text/javascript">
+$(function(){
+   $("#do-popup").click(function(){
+     $('#PopupWindow').css('display','block');
+     return false;
+   }) 
+   $(window).click(function(){
+     $('#PopupWindow').css('display','none');
+   }) 
+});
+</script>
+
+
+<style type="text/css"> 
+div#sim{
+/*  width:800px ; height: 600px; align: center;border: 1*/
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  cursor: default;
+  overflow: hidden;
+  width: 100%;
+  height: 100vh;
+/*  margin-bottom: 100px;*/
+  z-index: 1;
+}
+div#controls
+{
+  position: fixed;
+  bottom: 0;
+  margin:10px;
+  border: 1px solid;
+  z-index: 3;
+
+  pointer-events:none;
+  -moz-user-select: none; -webkit-user-select: none; -ms-user-select:none; user-select:none;
+  background-color: white;
+}
+button {
+  pointer-events:all;
+}
+div#controls a  {
+  pointer-events:all;
+}
+
+div#totalenergy
+{
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  margin:10px;
+  z-index: 2;  
+  pointer-events:none;
+  color: orange;
+}
+
+.bttn {
+  background-color: gray;
+  color: white;
+ -moz-border-radius: 5px;
+ -webkit-border-radius: 5px;
+ border-radius: 5px;
+ border: 1px solid black;
+ padding: 3px;
+ margin:50;
+}
+.bttn:hover {
+  background-color: darkgreen;
+}
+
+div#controls .addcharge  {
+  pointer-events:all;
+}
+
+a.addcharge:link    { color: white; text-decoration:none;font-family: sans-serif;}
+a.addcharge:visited { color: white; text-decoration:none;font-family: sans-serif;}
+a.addcharge:hover   { color: white; text-decoration:none;font-family: sans-serif;}
+a.addcharge:active  { color: white; text-decoration:none;font-family: sans-serif;}
+
+
+.round-button {
+	width:25px;
+  display:inline-block;
+ vertical-align: text-top;}
+.round-button.big {
+	width:40px;
+  display:inline-block;
+ vertical-align: text-top;
+}
+
+
+.round-button-circle {
+  margin-top: 10px;
+	width: 25px;
+	height:0;
+	padding-bottom: 100%;
+  border-radius: 50%;
+	border:1px solid black;
+  overflow:hidden;
+    
+  background: red; 
+  box-shadow: 0 0 3px gray;
+}
+.round-button-circle.big {
+  margin-top: 2.5px;
+	width: 40px;
+}
+.round-button-circle:hover {
+	background:darkred;
+}
+.round-button-circle.neg {
+  background: blue; 
+  box-shadow: 0 0 3px gray;
+}
+.round-button-circle.neg:hover {
+	background:darkblue;
+}
+.round-button span {
+  display:block;
+	float:left;
+	width:100%;
+	padding-top:50%;
+    padding-bottom:50%;
+	line-height:1em;
+	margin-top:-0.5em;
+    
+	text-align:center;
+	color:#e2eaf3;
+    font-family:Verdana;
+    font-size:1.0em;
+    text-decoration:none;
+}
+
+
+
+#PopupWindow {
+    display: none;
+    position: absolute;
+    width: 80%; height: 80%;
+    left: 10%; top: 30px;
+/*    margin: -155px 0 0 -300px;*/
+    border: solid 3px blue;
+    background-color: #ffffff;
+    overflow-y:scroll;
+    z-index:10;
+    box-shadow: 20px 20px 30px gray;
+}
+
+</style>
+
+</head>
+<body>
+  <div id="everything">
+    <div>
+    <div class="notpad" id="sim" ></div>
+  </div>
+    <div class="controls" id="controls">
+      <div style="display:inline-block">
+        <div class="round-button"><div class="round-button-circle"><span q="1"  class="btn addcharge" href="#">+1</span></div></div>
+        <div class="round-button big"><div class="round-button-circle big"><span q="2"  class="btn addcharge" href="#">+2</span></div></div>
+        <div class="round-button"><div class="round-button-circle neg"><span q="-1" class="btn addcharge" href="#">-1</span></div></div>
+        <div class="round-button big"><div class="round-button-circle neg big"><span q="-2" class="btn addcharge" href="#">-2</span></div></div>
+        <br/>Drag these charges in.
+        <br/>Drag out of window to remove.
+      </div>
+
+    <div style="display:inline-block">
+    
+      <div style="margin-bottom:10px"><a class="bttn" id="do-popup" href="#">More Help</a></div>
+      <div style="margin-bottom:10px"><a class="bttn" id="downloadlink" href='#' download="FieldLines.png">Download Image</a></div>
+      <div style="margin-bottom:10px"><a class="bttn" id="linktothis" href='#'>Link to this arrangement</a></div>
+    </div>
+    
+    <div style="display:inline-block">
+    
+     
+    </div>
+
+    <div style="display:inline-block">
+        <b>Electric Field Lines</b><br/>
+        by
+      <a href="http://faculty.otterbein.edu/NTagg">Nathaniel Tagg</a><br/>
+      <a href="http://www.otterbein.edu/public/Academics/Departments/Physics.aspx">Otterbein University Physics</a><br/>
+    </div>
+    <div style="display:inline-block">
+      <a href="http://www.otterbein.edu/public/Academics/Departments/Physics.aspx"><img style="height:50px" src="Otterbein.png" /></a>
+    </div>
+    
+
+  </div>
+  <div id="totalenergy"></div>
+
+
+<div id="PopupWindow">
+      <div style="display:inline-block">
+        <h3>Electric Field Lines</h3>
+        Applet by <br/> 
+        <a href="http://faculty.otterbein.edu/NTagg">Nathaniel Tagg</a><br/>
+        <a href="http://www.otterbein.edu/public/Academics/Departments/Physics.aspx">Otterbein University Physics</a><br/>
+      </div>
+      <div style="display:inline-block">
+        <a href="http://www.otterbein.edu/public/Academics/Departments/Physics.aspx"><img style="height:50px" src="Otterbein.png" /></a>
+      </div>
+  <h2>
+    Instructions:
+  </h2>
+  <ul>
+    <li> Click a charge and drag it to a new position to see the electric field lines move.  </li>
+    <li> Drag a charge outside the window to remove it from the view. </li>
+    <li> Click the charge buttons to add new charges to the window. </li>
+    <li> Total electrostatic energy of this charge configuration is shown in the lower right. Negative energies
+      represent bound states; postive energies represent unstable (explosive) states.</li>
+  </ul>
+
+  <h2>
+    About electric field lines:
+  </h2>
+  <p>
+    Electric field lines are one way of representing the electric field. The field is a vector field, so every point
+    in space has both a <b>magnitude</b> and a <b>direction</b>.  To get a feel for the direction of the field, look
+    at the direction of the field lines near that point.  To get a feel for the magnitude of the field, look to see how
+    many field lines go through that region.  
+  </p>
+  <p>
+    This applet does not get the field line density (number of lines in an area) exactly correct, but you
+    should be able to get a feel for things. Try moving charges around a bit to see how the lines move.
+  </p>
+
+  <h2>
+    For instructors:
+  </h2>
+    <ul>
+      <li>  You can create custom arrangements by moving the charges where you like, and then right-clicking the "link to this arrangement" button.  Select "Copy this URL" and distribute to students or save for your own use. </li>
+      <li> Here's a useful example: <br/>
+        <a  href="index.html?q1=-1,-1,-1&q2=-1,-1,-0.5&q3=-1,-1,0&q4=-1,-1,0.5&q5=-1,-1,1&q6=1,1,-1&q7=1,1,-0.5&q8=1,1,0&q9=1,1,0.5&&q10=1,1,1">Charged plates</a><br/>
+      </li>
+      <li> If you want precise positioning, the URL format is <br/>
+          <span style="font-family:courier">index.html?q1=[charge1],[x1],[y1]&q2=[charge2],[x2],[y2]&....</span><br/>
+          where charge1 is the size of the first charge, x1 and y1 are the coordinates. (0,0) is the center of the screen.</li>
+    </ul>
+  </p>
+  <h3>
+    Suggested activity: (AP physics or college physics):
+  </h3>
+  <p>
+    <a href="fieldline_activity.pdf">(PDF)</a>
+    <a href="fieldline_activity.docx">(Word)</a>
+    <a href="fieldline_activity.pages.zip">(Pages)</a>
+  </p>
+    Students are given some charge configurations and attempt to draw the field lines on their own. Once they have
+    completed an attempt, they look at this simulation.  Then they are directed correct their work based on what the simulation shows.
+  </p>
+  <p>
+    This activity is surprisingly challenging, even for students who understand electric fields mathematically, and improves
+    their appreciation for electrostatics as being about more than just Coulomb's law.
+  </p>
+
+  <h2>
+    About the simulation:
+  </h2>
+  <p>
+    Interestingly, drawing field lines is not closed-form soluable. This applet works by a 'shooting' approximation.
+  </p>
+  <p>
+    The first charge is generated with a set of field lines coming out with equal spacing. This lines are then traced 
+    along the direction of the field until the line either connects to another charge or gets very far out of the simulation
+    box.   
+  </p>
+  <p>
+    However, this creates connecting lines to some of the other charges, using up some of the 'nodes' that should
+    be radiating from that charge.  The simulation attempts to fast and dirty work to try to even out the remaining
+    lines.  Generally speaking, however, it is NOT possible to have lines radiating outward at equal angles from all charges
+    when the charges have finite size.
+  </p>
+  <p>
+    This simulation could probably be improved by iterating on the field lines, and backtracking foward and back between
+    charges to try to even out the spacing, but this would make the simulation non-responsive.  
+  </p>  
+  <p>
+    Nathaniel Tagg, Dec 2014
+  </p>
+</div>
+
+
+
+</body>
+  
