@@ -5,6 +5,8 @@ Applet by Nathaniel Tagg, Physics Department, Otterbein University
 
 This is a small web page that creates maps of electric field lines using Javascript in HTML5, intended for educational use.
 
+Feel free to link directly to the live version at http://neutrino.otterbein.edu/~tagg/fieldlines
+
 You are free to use this in your own projects, but please let me know and give me credit if you do so.
 
 About the simulation:
