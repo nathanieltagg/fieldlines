@@ -213,9 +213,40 @@ Applet.prototype.FindFieldLines = function()
     var npoints = Math.round(Math.abs(source_lines_per_unit_charge*charge.q));
     // Set all points to 'unused'.
     charge.nodesNeeded =[];
+    // Original algorithm: Space 'needed' nodes around evenly.
     for(var j = 0; j<npoints; j++) {
       charge.nodesNeeded.push(2*j/npoints*Math.PI);
-    }      
+    }
+
+    // // New algorithm: Space 'needed' nodes around accoring to the
+    // // LOCAL field, as adjusted by other local charges!
+    // var nGrid = 72;
+    // var biggestField = 0;
+    // var biggestFieldJ = 0;
+    // var totField = 0;
+    // var grid = [];
+    // for(var j=0;j<nGrid;j++) {
+    //   var theta = 2*Math.PI*j/nGrid;
+    //   var x = charge.x+charge.r*Math.cos(theta);
+    //   var y = charge.y+charge.r*Math.sin(theta);
+    //   var E = this.Field(x,y);
+    //   // console.log(x,y,E,charge);
+    //   if(Math.abs(E.E)>biggestField) { biggestField = Math.abs(E.E); biggestFieldJ=j;}
+    //   totField += Math.abs(E.E);
+    //   grid.push(E.E);
+    // }
+    // // Now, evenly space them around in integrated field units.
+    // var spacing = totField/npoints;
+    // charge.nodesNeeded.push(2*Math.PI*biggestFieldJ/nGrid);
+    //
+    // var sum = 0;
+    // for(var j=1;j<nGrid;j++) {
+    //   var jj = (j+biggestFieldJ)%nGrid;
+    //   sum += grid[jj];
+    //   if(sum>spacing) {charge.nodesNeeded.push(2*Math.PI*jj/nGrid); sum -= spacing;}
+    // }
+    // if(charge.nodesNeeded.length != npoints) console.log("Got wrong number of needed points. Wanted ",npoints," got ",charge.nodesNeeded.length);
+    
     total_charge += charge.q;
   }
 
@@ -247,8 +278,8 @@ Applet.prototype.FindFieldLines = function()
           start_angle = myRandom[nodeTries];
         }
         // console.log("Try: ",nodeTries,"Trying angle:",start_angle*180/Math.PI,nodeTries);
-        var x = charge.x + step* Math.cos(start_angle);
-        var y = charge.y + step* Math.sin(start_angle);
+        var x = charge.x + charge.r* Math.cos(start_angle);
+        var y = charge.y + charge.r* Math.sin(start_angle);
         //console.log("Start xy",x,y);
         var dir = 1;
         if(charge.q<0) dir = -1;
@@ -305,7 +336,7 @@ Applet.prototype.FindFieldLines = function()
             traceFinished = true;
             fieldline.nstep = nstep;
             nodeFinished = true;       
-            // console.log("Line succeeded - no hit");
+            console.log("Line succeeded - no hit");
             
           }  // if nstep 
         } // traceFinished        
