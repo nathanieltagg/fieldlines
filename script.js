@@ -214,38 +214,44 @@ Applet.prototype.FindFieldLines = function()
     // Set all points to 'unused'.
     charge.nodesNeeded =[];
     // Original algorithm: Space 'needed' nodes around evenly.
-    for(var j = 0; j<npoints; j++) {
-      charge.nodesNeeded.push(2*j/npoints*Math.PI);
-    }
+    // for(var j = 0; j<npoints; j++) {
+   //    charge.nodesNeeded.push(2*j/npoints*Math.PI);
+   //  }
 
-    // // New algorithm: Space 'needed' nodes around accoring to the
-    // // LOCAL field, as adjusted by other local charges!
-    // var nGrid = 72;
-    // var biggestField = 0;
-    // var biggestFieldJ = 0;
-    // var totField = 0;
-    // var grid = [];
-    // for(var j=0;j<nGrid;j++) {
-    //   var theta = 2*Math.PI*j/nGrid;
-    //   var x = charge.x+charge.r*Math.cos(theta);
-    //   var y = charge.y+charge.r*Math.sin(theta);
-    //   var E = this.Field(x,y);
-    //   // console.log(x,y,E,charge);
-    //   if(Math.abs(E.E)>biggestField) { biggestField = Math.abs(E.E); biggestFieldJ=j;}
-    //   totField += Math.abs(E.E);
-    //   grid.push(E.E);
-    // }
-    // // Now, evenly space them around in integrated field units.
-    // var spacing = totField/npoints;
-    // charge.nodesNeeded.push(2*Math.PI*biggestFieldJ/nGrid);
-    //
-    // var sum = 0;
-    // for(var j=1;j<nGrid;j++) {
-    //   var jj = (j+biggestFieldJ)%nGrid;
-    //   sum += grid[jj];
-    //   if(sum>spacing) {charge.nodesNeeded.push(2*Math.PI*jj/nGrid); sum -= spacing;}
-    // }
-    // if(charge.nodesNeeded.length != npoints) console.log("Got wrong number of needed points. Wanted ",npoints," got ",charge.nodesNeeded.length);
+    // New algorithm: Space 'needed' nodes around accoring to the
+    // LOCAL field, as adjusted by other local charges!
+    var nGrid = 72;
+    var biggestField = 0;
+    var biggestFieldJ = 0;
+    var totField = 0;
+    var grid = [];
+    for(var j=0;j<nGrid;j++) {
+      var theta = 2*Math.PI*j/nGrid;
+      var x = charge.x+charge.r*Math.cos(theta);
+      var y = charge.y+charge.r*Math.sin(theta);
+      var E = this.Field(x,y);
+      // console.log(x,y,E,charge);
+      if(Math.abs(E.E)>biggestField) { biggestField = Math.abs(E.E); biggestFieldJ=j;}
+      totField += Math.abs(E.E);
+      grid.push(E.E);
+    }
+    // Now, evenly space them around in integrated field units.
+    var spacing = totField/npoints;
+    charge.nodesNeeded.push(2*Math.PI*biggestFieldJ/nGrid);
+
+    var sum = 0;
+    for(var j=1;j<nGrid;j++) {
+      var jj = (j+biggestFieldJ)%nGrid;
+      sum += grid[jj];
+      if(sum>spacing) {charge.nodesNeeded.push(2*Math.PI*jj/nGrid); sum -= spacing;}
+    }
+    var spacings = [];
+    for(var j=1;j<charge.nodesNeeded.length;j++) {
+      spacings.push((charge.nodesNeeded[j]-charge.nodesNeeded[j-1])/2/Math.PI);
+    }
+    // console.log('nodes',charge.nodesNeeded);
+    // console.log('spacings',spacings);
+    if(charge.nodesNeeded.length != npoints) console.log("Got wrong number of needed points. Wanted ",npoints," got ",charge.nodesNeeded.length);
     
     total_charge += charge.q;
   }
