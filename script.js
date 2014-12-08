@@ -119,11 +119,17 @@ function Applet(element, options)
   var self = this;
   $(window).bind('resize',function(ev) { return self.Resize(ev); });
   
-  $(this.element).bind('mousemove',function(ev) { return self.DoMouse(ev); });
+  $(window).bind('mousemove',function(ev) { return self.DoMouse(ev); });
   $(this.element).bind('mousedown',function(ev) { return self.DoMouse(ev); });
-  $(this.element).bind('mouseup',function(ev) { return self.DoMouse(ev); });
+  $(window).bind('mouseup',function(ev) { return self.DoMouse(ev); });
   $(this.element).bind('mouseout' ,function(ev) { return self.DoMouse(ev); });  
   $('.addcharge').bind('mousedown' ,function(ev) { return self.AddCharge(ev); });  
+
+  $(this.element).bind('touchstart',function(ev) { return self.DoMouse(ev); });
+  $(window).bind('touchmove',function(ev) { return self.DoMouse(ev); });
+  $(window).bind('touchend',function(ev) { return self.DoMouse(ev); });
+  $('.addcharge').bind('touchstart' ,function(ev) { return self.AddCharge(ev); });  
+
 }
 
 Applet.prototype.Resize = function()
@@ -521,25 +527,41 @@ function getAbsolutePosition(element) {
  };
 
 
+Applet.prototype.GetEventXY = function(ev)
+ {
+  // Convert mouse click coordinates to the mathematical plane.
+   var offset = getAbsolutePosition(this.canvas);
+   var x = ev.pageX;
+   var y = ev.pageY;
+   $('#debug').html("DoMouse "+ ev.type + " " + ev.originalEvent.touches.length + " " + x +  " " + y);    
+  
+   if((ev.type =='touchstart') || (ev.type =='touchmove') || (ev.type =='touchend')) {
+     ev.preventDefault();
+     $('#debug').html("DoMouse "+ ev.type + " " + ev.originalEvent.touches.length + " " + x +  " " + y);    
+     x = ev.originalEvent.touches[0].pageX;
+     y = ev.originalEvent.touches[0].pageY;
+   }
+   x = x - offset.x;
+   y = y - offset.y;    
+   x -= this.canvas_translate.x;
+   y -= this.canvas_translate.y;
+   x /= this.canvas_scale.x;
+   y /= this.canvas_scale.y;
+   return {x:x, y:y};
+ }
+
 Applet.prototype.DoMouse = function(ev)
 {
-  // Convert mouse click coordinates to the mathematical plane.
-  var offset = getAbsolutePosition(this.canvas);
-  x = ev.pageX - offset.x;
-  y = ev.pageY - offset.y;    
-  x -= this.canvas_translate.x;
-  y -= this.canvas_translate.y;
-  x /= this.canvas_scale.x;
-  y /= this.canvas_scale.y;
+  var xy = this.GetEventXY(ev);
+  var x = xy.x;
+  var y = xy.y;
 
   // console.log(ev.type,x,y);
 
   var update = false;
   
-  if(ev.type === 'click') {
-    
-  }
-  if(ev.type === 'mousedown') {
+
+  if(ev.type === 'mousedown' || ev.type ==='touchstart') {
     // See if we're clicking a charge.
     var charge = this.FindCollision(x,y);
     if(charge) {
@@ -549,14 +571,14 @@ Applet.prototype.DoMouse = function(ev)
       update = true;
     }
   }
-  if(ev.type === 'mousemove') {
+  if(ev.type === 'mousemove' || ev.type ==='touchmove') {
     if(this.dragging) {
       this.charge_dragged.x = x;
       this.charge_dragged.y = y;
       update = true;    
     }
   }
-  if(ev.type === 'mouseup') {
+  if(ev.type === 'mouseup' || ev.type ==='touchend') {
     if(this.charge_dragged) this.charge_dragged.highlight = false;
     this.charge_dragged = null
     this.dragging = false;
@@ -583,15 +605,10 @@ Applet.prototype.AddCharge = function(ev)
 {
   console.log("AddCharge",ev);
   var q = parseFloat(ev.currentTarget.getAttribute('q'));
+  var xy = this.GetEventXY(ev);
+  var x = xy.x;
+  var y = xy.y;
   
-  var offset = getAbsolutePosition(this.canvas);
-  x = ev.pageX - offset.x;
-  y = ev.pageY - offset.y;    
-  x -= this.canvas_translate.x;
-  y -= this.canvas_translate.y;
-  x /= this.canvas_scale.x;
-  y /= this.canvas_scale.y;
-
   var charge = { q : q,  x : x,  y: y , r:0.12*Math.abs(q)};
   this.charges.push(charge);
   
