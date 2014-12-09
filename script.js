@@ -533,11 +533,11 @@ Applet.prototype.GetEventXY = function(ev)
    var offset = getAbsolutePosition(this.canvas);
    var x = ev.pageX;
    var y = ev.pageY;
-   $('#debug').html("DoMouse "+ ev.type + " " + ev.originalEvent.touches.length + " " + x +  " " + y);    
+   //$('#debug').html("DoMouse "+ ev.type + " " + ev.originalEvent.touches.length + " " + x +  " " + y);    
   
    if((ev.type =='touchstart') || (ev.type =='touchmove') || (ev.type =='touchend')) {
      ev.preventDefault();
-     $('#debug').html("DoMouse "+ ev.type + " " + ev.originalEvent.touches.length + " " + x +  " " + y);    
+     //$('#debug').html("DoMouse "+ ev.type + " " + ev.originalEvent.touches.length + " " + x +  " " + y);    
      x = ev.originalEvent.touches[0].pageX;
      y = ev.originalEvent.touches[0].pageY;
    }
