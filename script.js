@@ -1,3 +1,5 @@
+var TWO_PI = Math.PI * 2;
+
 var source_lines_per_unit_charge = 6;
 var k = 10;
 
@@ -204,6 +206,118 @@ function chargesort(a,b)
   return cmp;
 }
 
+
+Applet.prototype.FindNodePosition = function(charge)
+{
+  // See if there are some precomputed positions to try.
+  if(charge.nodesNeeded && charge.nodesNeeded.length>0) {
+    var t = charge.nodesNeeded.shift();
+    charge.nodes.push(t);
+    return t;
+  }
+
+  // If this is a virgin charge, just push 0 radius:
+  if(charge.nodes.length == 0) { 
+    charge.nodes.push(0);
+    return 0;
+  }
+
+  charge.nodes.sort();
+  // bifurcate biggest arc
+  var biggest_gap = 0;
+  var gap_after = 0;
+  for(var i=0;i<charge.nodes.length;i++) {
+    var t1 = charge.nodes[i];
+    var t2;
+    if(i+1 < charge.nodes.length) t2 = charge.nodes[(i+1)];
+    else t2 = charge.nodes[(i+1)%charge.nodes.length]+TWO_PI; // wrap around
+    var dt = Math.abs(t2-t1);
+    // console.log(i,t1,t2,dt);
+    if(dt>biggest_gap) { gap_after = i; biggest_gap = dt; }
+  }
+  var new_node = (charge.nodes[gap_after] + biggest_gap*0.5)%(TWO_PI);
+  charge.nodes.push(new_node);
+  return new_node;
+}
+
+
+Applet.prototype.SeedNodes = function(charge)
+{
+  // // Original algorithm: Space 'needed' nodes around evenly.
+  for(var j = 0; j<charge.n_nodes; j++) {
+    charge.nodesNeeded.push(TWO_PI*j/charge.n_nodes);
+  }  
+
+
+  // // Algorithm 2: Space 'needed' nodes around accoring to the
+  // // LOCAL field, as adjusted by other local charges!
+  // var nGrid = 72;
+  // var biggestField = 0;
+  // var biggestFieldJ = 0;
+  // var totField = 0;
+  // var grid = [];
+  // for(var j=0;j<nGrid;j++) {
+  //   var theta = 2*Math.PI*j/nGrid;
+  //   var x = charge.x+charge.r*Math.cos(theta);
+  //   var y = charge.y+charge.r*Math.sin(theta);
+  //   var E = this.Field(x,y);
+  //   // console.log(x,y,E,charge);
+  //   if(Math.abs(E.E)>biggestField) { biggestField = Math.abs(E.E); biggestFieldJ=j;}
+  //   totField += Math.abs(E.E);
+  //   grid.push(E.E);
+  // }
+  // // Now, evenly space them around in integrated field units.
+  // var spacing = totField/charge.n_nodes;
+  // charge.nodesNeeded.push(2*Math.PI*biggestFieldJ/nGrid);
+  //
+  // var sum = 0;
+  // for(var j=1;j<nGrid;j++) {
+  //   var jj = (j+biggestFieldJ)%nGrid;
+  //   sum += grid[jj];
+  //   if(sum>spacing) {charge.nodesNeeded.push(2*Math.PI*jj/nGrid); sum -= spacing;}
+  // }
+  // var spacings = [];
+  // for(var j=1;j<charge.nodesNeeded.length;j++) {
+  //   spacings.push((charge.nodesNeeded[j]-charge.nodesNeeded[j-1])/2/Math.PI);
+  // }
+  // // console.log('nodes',charge.nodesNeeded);
+  // // console.log('spacings',spacings);
+  // if(charge.nodesNeeded.length != charge.n_nodes) console.log("Got wrong number of needed points. Wanted ",charge.n_nodes," got ",charge.nodesNeeded.length);
+
+  // Algorithm 3: track from the very center, using epsilon push away from charge center.
+  // for(var j = 0; j<charge.n_nodes; j++) {
+  //   var theta = 2*j/charge.n_nodes*Math.PI;
+  //   var dir = 1;
+  //   if(charge.q<0) dir = -1;
+  //   var x = charge.x + 0.01*Math.cos(theta);
+  //   var y = charge.y + 0.01*Math.sin(theta);
+  //   var deltax = 0;
+  //   var deltay = 0;
+  //   var d2 = 0;
+  //   var nstart = 0;
+  //   do {
+  //     var E = this.Field(x,y);
+  //     var dx = E.x * step/10;
+  //     var dy = E.y * step/10;
+  //     x += dx*dir;
+  //     y += dy*dir;
+  //     deltax = x-charge.x;
+  //     deltay = y-charge.y;
+  //     d2 = deltax*deltax + deltay*deltay;
+  //     nstart++;
+  //   } while ( d2 < charge.r*charge.r );
+  //
+  //   var angle = Math.atan2(deltay,deltax);
+  //
+  //   charge.nodesNeeded.push(angle);
+  //   console.log("need node:",deltay,deltax,angle,nstart);
+  //  }
+
+  // charge.nodesRequested = charge.nodesNeeded.slice(0);
+
+}
+
+
 Applet.prototype.FindFieldLines = function()
 {
   // configuration:
@@ -217,83 +331,16 @@ Applet.prototype.FindFieldLines = function()
   var total_charge = 0;
   for(var i=0 ;i<this.charges.length; i++) {
     var charge = this.charges[i];
-    var npoints = Math.round(Math.abs(source_lines_per_unit_charge*charge.q));
-    // Set all points to 'unused'.
-    charge.nodesNeeded =[];
-    // Original algorithm: Space 'needed' nodes around evenly.
-    for(var j = 0; j<npoints; j++) {
-      charge.nodesNeeded.push(2*j/npoints*Math.PI);
-    }
-
-    // // Algorithm 2: Space 'needed' nodes around accoring to the
-    // // LOCAL field, as adjusted by other local charges!
-    // var nGrid = 72;
-    // var biggestField = 0;
-    // var biggestFieldJ = 0;
-    // var totField = 0;
-    // var grid = [];
-    // for(var j=0;j<nGrid;j++) {
-    //   var theta = 2*Math.PI*j/nGrid;
-    //   var x = charge.x+charge.r*Math.cos(theta);
-    //   var y = charge.y+charge.r*Math.sin(theta);
-    //   var E = this.Field(x,y);
-    //   // console.log(x,y,E,charge);
-    //   if(Math.abs(E.E)>biggestField) { biggestField = Math.abs(E.E); biggestFieldJ=j;}
-    //   totField += Math.abs(E.E);
-    //   grid.push(E.E);
-    // }
-    // // Now, evenly space them around in integrated field units.
-    // var spacing = totField/npoints;
-    // charge.nodesNeeded.push(2*Math.PI*biggestFieldJ/nGrid);
-    //
-    // var sum = 0;
-    // for(var j=1;j<nGrid;j++) {
-    //   var jj = (j+biggestFieldJ)%nGrid;
-    //   sum += grid[jj];
-    //   if(sum>spacing) {charge.nodesNeeded.push(2*Math.PI*jj/nGrid); sum -= spacing;}
-    // }
-    // var spacings = [];
-    // for(var j=1;j<charge.nodesNeeded.length;j++) {
-    //   spacings.push((charge.nodesNeeded[j]-charge.nodesNeeded[j-1])/2/Math.PI);
-    // }
-    // // console.log('nodes',charge.nodesNeeded);
-    // // console.log('spacings',spacings);
-    // if(charge.nodesNeeded.length != npoints) console.log("Got wrong number of needed points. Wanted ",npoints," got ",charge.nodesNeeded.length);
-
-    // Algorithm 3: track from the very center, using epsilon push away from charge center.
-    // for(var j = 0; j<npoints; j++) {
-    //   var theta = 2*j/npoints*Math.PI;
-    //   var dir = 1;
-    //   if(charge.q<0) dir = -1;
-    //   var x = charge.x + start_step*Math.cos(theta);
-    //   var y = charge.y + start_step*Math.sin(theta);
-    //   var deltax = 0;
-    //   var deltay = 0;
-    //   var d2 = 0;
-    //   var nstart = 0;
-    //   do {
-    //     var E = this.Field(x,y);
-    //     var dx = E.x * step/10;
-    //     var dy = E.y * step/10;
-    //     x += dx*dir;
-    //     y += dy*dir;
-    //     deltax = x-charge.x;
-    //     deltay = y-charge.y;
-    //     d2 = deltax*deltax + deltay*deltay;
-    //     nstart++;
-    //   } while ( d2 < charge.r*charge.r );
-    //
-    //   var angle = Math.atan2(deltay,deltax);
-    //
-    //   charge.nodesNeeded.push(angle);
-    //   console.log("need node:",deltay,deltax,angle,nstart);
-    //  }
-    //
-    
     total_charge += charge.q;
+    charge.n_nodes = Math.round(Math.abs(source_lines_per_unit_charge*charge.q));
+    charge.nodes = []; // All successful or unsuccesful nodes
+    charge.nodesUsed = []; // Nodes that have actually worked.
+    charge.nodesNeeded = []; // Some idea what nodes we should try.
+    this.SeedNodes(charge);
   }
+  
 
-  // rank them. Use minority charge carriers first.
+  // rank them. Use minority charge carriers first: their nodes HAVE to connect.
   this.charges.sort(chargesort);
   if(total_charge<0) this.charges.reverse();
 
@@ -305,90 +352,95 @@ Applet.prototype.FindFieldLines = function()
     var charge = this.charges[i];    
     // console.log("Find field lines for charge ",i," with charge ",charge.q);
     this.ctx.fillStyle = 'blue';
-    if(charge.q >0) this.ctx.fillStyle = 'red';
-    // console.log("Doing charge",i,"with q=",charge.q,"which needs ",charge.nodesNeeded.length," nodes");
-    for(var j=0; j<charge.nodesNeeded.length; j++) {
+    console.log("Doing charge",i,"with q=",charge.q,"which has ",charge.nodesUsed.length,"/",charge.n_nodes," nodes");
+
+
+    while(charge.nodesUsed.length < charge.n_nodes && charge.nodes.length<105) {
+      if(charge.nodes.length>100) {
+        console.warn("Wow! Tried way too many nodes.",charge.nodes);
+      }
+      
+      var start_angle = this.FindNodePosition(charge);
+
       var r = charge.r;
       // Boost in initial direction by radius.
-      start_angle = charge.nodesNeeded[j];
       var fieldline = { startCharge: charge };
 
       var nodeFinished = false;
-      var nodeTries =0;
-      while(!nodeFinished) {
-        nodeTries++;
-        if(nodeTries>1) {
-          start_angle = myRandom[nodeTries];
-        }
-        // console.log("Try: ",nodeTries,"Trying angle:",start_angle*180/Math.PI,nodeTries);
-        var x = charge.x + charge.r* Math.cos(start_angle);
-        var y = charge.y + charge.r* Math.sin(start_angle);
-        //console.log("Start xy",x,y);
-        var dir = 1;
-        if(charge.q<0) dir = -1;
-        fieldline.start_angle = start_angle;
-        fieldline.start_x = x;
-        fieldline.start_y = y;
-        fieldline.dir     = dir;
-        fieldline.points  = [{x:x,y:y}];
 
-        var traceFinished = false;
-        var nstep = 0;
-        while(!traceFinished) {
-          nstep++;
-          var E = this.Field(x,y);
-          var dx = E.x * step;
-          var dy = E.y * step;
-          x += dx*dir;
-          y += dy*dir;
-          fieldline.points.push({x:x,y:y});
-        
-          var collide = this.FindCollision(x,y);
-          if(collide && (charge.q*collide.q < 0) && nstep>1) {
-            traceFinished = true;
-            // Find the best possible node for this line.
-            if(collide.nodesNeeded.length == 0) {
-              // console.log("Line failed - hit q=",collide.q,"which has no nodes left.");
-              nodeFinished=false;
-            } else {
-              // console.warn("collided with charge that has ",collide.nodesNeeded.length,"left ")
-              nodeFinished = true;
-              dx = x-collide.x;
-              dy = y-collide.y;
-              var angle = Math.atan2(dy,dx);
-              var best = 0;
-              var bestdiff = 9e9;
-              for(var k=0; k<collide.nodesNeeded.length;k++){
-                  var diff = Math.abs( (collide.nodesNeeded[k] - angle)%(2*Math.PI) );
-                  if(diff<bestdiff) {bestdiff = diff; best = k};
-                }
-              fieldline.endCharge = collide;
-              fieldline.endAngle     = angle;
-              fieldline.endNodeAngle = collide.nodesNeeded[best];
-              fieldline.nstep = nstep;
-              // console.log("Line succeeded - hit q=",collide.q);
+      // console.log("Try: ",nodeTries,"Trying angle:",start_angle*180/Math.PI,nodeTries);
+      var x = charge.x + step* Math.cos(start_angle);
+      var y = charge.y + step* Math.sin(start_angle);
+      //console.log("Start xy",x,y);
+      var dir = 1;
+      if(charge.q<0) dir = -1;
+      fieldline.start_angle = start_angle;
+      fieldline.start_x = x;
+      fieldline.start_y = y;
+      fieldline.dir     = dir;
+      fieldline.points  = [{x:x,y:y}];
 
-              collide.nodesNeeded.splice(best,1);
-            }
-          }
-                  
-          if(nstep>max_steps){
-            fieldline.endCharge = null;
-            fieldline.endAngle     = null;
-            fieldline.endNodeAngle = null;
-            traceFinished = true;
-            fieldline.nstep = nstep;
-            nodeFinished = true;       
-            console.log("Line succeeded - no hit");
+      var traceFinished = false;
+      var nstep = 0;
+      while(!traceFinished) {
+        nstep++;
+        var E = this.Field(x,y);
+        var dx = E.x * step;
+        var dy = E.y * step;
+        x += dx*dir;
+        y += dy*dir;
+        fieldline.points.push({x:x,y:y});
+      
+        var collide = this.FindCollision(x,y);
+        if(collide && (charge.q*collide.q < 0) && nstep>1) {
+          traceFinished = true;
+          // Find the best possible node for this line.
+          if(collide.n_nodes >= collide.nodes.length+1 == 0) {
+            // console.warn("Line failed - hit q=",collide.q,"which has no nodes left.");
+            nodeFinished=false;
+          } else {
+            // console.warn("collided with charge that has ",collide.nodesNeeded.length,"left ")
+            nodeFinished = true;
+            dx = x-collide.x;
+            dy = y-collide.y;
+            var angle = (Math.atan2(dy,dx)+TWO_PI)%TWO_PI;
             
-          }  // if nstep 
-        } // traceFinished        
-      } // nodeFinished
-      if(nodeTries>1) console.log("nodetries: ", nodeTries);
-      this.fieldLines.push(fieldline);      
-    } // nodes on this charge.
-    charge.nodesNeeded = []; // We've done them all now.
+            collide.nodes.push(angle);
+            collide.nodesUsed.push(angle);
+              
+            var best = 0;
+            var bestdiff = 9e9;
+            for(var k=0; k<collide.nodesNeeded.length;k++){
+                var diff = Math.abs( (collide.nodesNeeded[k] - angle)%(2*Math.PI) );
+                if(diff<bestdiff) {bestdiff = diff; best = k};
+            }
+            collide.nodesNeeded.splice(best,1);
+            // fieldline.endNodeAngle = collide.nodesNeeded[best];
+            fieldline.endCharge = collide;
+            fieldline.endAngle     = angle;
+            fieldline.nstep = nstep;
+
+            console.log("Line succeeded - hit q=",collide.q);
+          }
+        }
+                  
+        if(nstep>max_steps){
+          fieldline.endCharge = null;
+          fieldline.endAngle     = null;
+          fieldline.endNodeAngle = null;
+          traceFinished = true;
+          fieldline.nstep = nstep;
+          nodeFinished = true;       
+          // console.log("Line succeeded - no hit");
+        }  // if nstep 
+      } // traceFinished  
+      if(nodeFinished) {
+        charge.nodesUsed.push(start_angle);
+        this.fieldLines.push(fieldline);      
+      }
+    } // nodeFinished
   }
+  
   
 }
 
@@ -422,19 +474,19 @@ Applet.prototype.Draw = function()
   
   this.ctx.translate(this.canvas_translate.x,this.canvas_translate.y);
   this.ctx.scale(this.canvas_scale.x,this.canvas_scale.y);
-  var xmin = -this.width_x/2;
-  var xmax =  this.width_x/2;
-  var ymin = -this.width_x/2 * this.canvas.height/this.canvas.width;
-  var ymax =  this.width_x/2 * this.canvas.height/this.canvas.width;
+  this.xmin = -this.width_x/2;
+  this.xmax =  this.width_x/2;
+  this.ymin = -this.width_x/2 * this.canvas.height/this.canvas.width;
+  this.ymax =  this.width_x/2 * this.canvas.height/this.canvas.width;
   
   this.ctx.strokeStyle = 'black';
   this.ctx.lineWidth = 0.01;
   this.ctx.beginPath();
-  this.ctx.moveTo(xmin,ymin);
-  this.ctx.lineTo(xmax,ymin);
-  this.ctx.lineTo(xmax,ymax);
-  this.ctx.lineTo(xmin,ymax);
-  this.ctx.lineTo(xmin,ymin);
+  this.ctx.moveTo(this.xmin,this.ymin);
+  this.ctx.lineTo(this.xmax,this.ymin);
+  this.ctx.lineTo(this.xmax,this.ymax);
+  this.ctx.lineTo(this.xmin,this.ymax);
+  this.ctx.lineTo(this.xmin,this.ymin);
   this.ctx.stroke();
   this.ctx.beginPath();
   
@@ -452,6 +504,15 @@ Applet.prototype.Draw = function()
   this.FindFieldLines()
   console.timeEnd("FindFieldLines");
   
+  this.DrawFieldLines();
+  this.DrawCharges();
+  
+  this.ctx.restore();
+  
+}
+
+Applet.prototype.DrawFieldLines = function()
+{ 
   console.time("Drawing lines")
   this.ctx.lineWidth = 0.02;
   for(var i=0;i<this.fieldLines.length;i++) {
@@ -475,7 +536,7 @@ Applet.prototype.Draw = function()
     var x = line.points[j].x;
     var y = line.points[j].y;
     // Ensure arrow is on the screen - keep halving the midway point until we reach it.
-    while(x<xmin || x>xmax || y<ymin || y>ymax) {
+    while(x<this.xmin || x>this.xmax || y<this.ymin || y>this.ymax) {
       j = Math.round(j/2);
       x = line.points[j].x;
       y = line.points[j].y;
@@ -487,7 +548,7 @@ Applet.prototype.Draw = function()
     this.ctx.save();
     this.ctx.translate(x,y);
     this.ctx.fillStyle = 'black';
-    var angle = Math.atan2(dy,dx);
+    var angle = (Math.atan2(dy,dx)+TWO_PI)%TWO_PI;
     this.ctx.rotate(angle);
     var lx = 0.2;
     var ly = 0.1;
@@ -511,7 +572,10 @@ Applet.prototype.Draw = function()
   }
   console.timeEnd("Drawing lines")
 
-  
+}
+
+Applet.prototype.DrawCharges = function()
+{
   // Draw charges. Do this last so line tails are covered.
   for(var i=0 ;i<this.charges.length; i++) {
     var charge = this.charges[i];    
@@ -527,8 +591,19 @@ Applet.prototype.Draw = function()
     this.ctx.arc(x,y,r,0,Math.PI*2,true);
     this.ctx.fill();
     this.ctx.stroke();
+
+    // Draw attempted node positions, for debugging
+    // for(var j=0;j<charge.nodes.length;j++) {
+    //   var t= charge.nodes[j];
+    //   x = charge.x + r*Math.cos(t);
+    //   y = charge.y + r*Math.sin(t);
+    //   this.ctx.beginPath();
+    //   this.ctx.arc(x,y,r/5,0,Math.PI*2,true);
+    //   this.ctx.stroke();
+    // }
+
     this.ctx.save();
-    this.ctx.translate(x,y);
+    this.ctx.translate(charge.x,charge.y);
     this.ctx.scale(0.01,-0.01);
     this.ctx.fillStyle = 'white';
     this.ctx.strokeStyle = 'white';
@@ -544,7 +619,6 @@ Applet.prototype.Draw = function()
     this.ctx.restore();
   }
   
-  this.ctx.restore();
 }
 
 function getAbsolutePosition(element) {
@@ -656,12 +730,12 @@ Applet.prototype.AddChargeRandom = function(ev)
   console.log(ev);
   var q = parseFloat(ev.currentTarget.getAttribute('q'));
   console.log(q);
-  var xmin = -this.width_x/2;
-  var xmax =  this.width_x/2;
-  var ymin = -this.width_x/2 * this.canvas.height/this.canvas.width;
-  var ymax =  this.width_x/2 * this.canvas.height/this.canvas.width;
-  var x = (Math.random()*1.8 - 0.9)*(xmax-xmin)/2;
-  var y = (Math.random()*1.8-0.9) *(ymax-ymin)/2;
+  this.xmin = -this.width_x/2;
+  this.xmax =  this.width_x/2;
+  this.ymin = -this.width_x/2 * this.canvas.height/this.canvas.width;
+  this.ymax =  this.width_x/2 * this.canvas.height/this.canvas.width;
+  var x = (Math.random()*1.8 - 0.9)*(this.xmax-this.xmin)/2;
+  var y = (Math.random()*1.8-0.9) *(this.ymax-this.ymin)/2;
   this.charges.push({
     q : q,  x : x,  y: y , r:0.12*Math.abs(q)
   });
