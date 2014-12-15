@@ -1,10 +1,21 @@
 var TWO_PI = Math.PI * 2;
 
 var source_lines_per_unit_charge = 6;
-var k = 10;
+var k = 10; // 1/4 pi epsilon naught
 
-var do_equipotential = false;
-var potential_multiple = 4;
+
+// configuration:
+var step = 0.05;
+var start_step = 0.001;
+var max_steps = 1000;
+
+
+var do_equipotential = true;
+var Utolerance = 0.01;
+var step_equi = 0.1;
+var max_equi_step = 100;
+
+var potential_multiple = 3;
 
 
 // A list of random things values from zero to twopi, as trial seeds for directions
@@ -115,7 +126,7 @@ function Applet(element, options)
   if(this.charges.length==0) this.charges = [
                               { q : 1,  x : -1,  y: 1 , r:0.12},
                               { q : -1, x : 1,   y:-0 , r:0.12 },
-                              { q : -2, x : 1.001,   y:-1 , r:0.24 },
+                              { q : -2, x : 1.001,   y:-1 , r:Math.sqrt(2)*0.12 },
                               ];
   
   
@@ -176,9 +187,11 @@ Applet.prototype.Field = function(x,y)
   }
   var E2 = Ex*Ex + Ey*Ey;
   var E = Math.sqrt(E2);
-  var ret = { U: U,  
-              E: E, 
-              x: Ex/E,   y: Ey/E
+  var ret = { x: x, y: y,         // Coordinates.
+              U: U,              // Potential
+              E: E,              // Field magnitude
+              Ex: Ex, Ey: Ey,    // Field vector
+              gx: Ex/E, gy: Ey/E // Field direction vector
               };
   // console.log("Field at "+x+","+y,ret);
   return ret;
@@ -232,34 +245,47 @@ function PointTripletOrientation(p,q,r)
     return (val > 0)? 1: 2; // clock or counterclock wise
 }
 
+function PointOnSegment( p, q, r)
+{
+    if (q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x) &&
+        q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y))
+       return true;
+ 
+    return false;
+}
+
 function LineSegmentsIntersect(p1,q1,  // first line segment points
                                p2,q2   // second line segment points
                             )
 {
+  // From http://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+  
   // Find the four orientations needed for general and
   // special cases
   var o1 = PointTripletOrientation(p1, q1, p2);
   var o2 = PointTripletOrientation(p1, q1, q2);
-  var o3 = PointTripletOrientation(p2, q2, p1);
-  var o4 = PointTripletOrientation(p2, q2, q1);
+  var o3 = PointTripletOrientation(p1, p2, q2);
+  var o4 = PointTripletOrientation(q1, p2, q2);
 
+  var d2 = (q2.x-p1.x)*(q2.x-p1.x) + (q2.y-p1.y)*(q2.y-p1.y)
+  // console.log("Check for intersection",o1,o2,o3,o4,Math.sqrt(d2),p1,q1,p2,q2);
   // General case
-  if (o1 != o2 && o3 != o4)
+  if ((o1 != o2) && (o3 != o4))
       return true;
 
   // Not important to us; tested segments should always be nearly perpendicular
-  // // Special Cases: check for colinearity.
-  // // p1, q1 and p2 are colinear and p2 lies on segment p1q1
-  // if (o1 == 0 && onSegment(p1, p2, q1)) return true;
+  // Special Cases: check for colinearity.
+  // p1, q1 and p2 are colinear and p2 lies on segment p1q1
+  // if (o1 == 0 && PointOnSegment(p1, p2, q1)) return true;
   //
   // // p1, q1 and p2 are colinear and q2 lies on segment p1q1
-  // if (o2 == 0 && onSegment(p1, q2, q1)) return true;
+  // if (o2 == 0 && PointOnSegment(p1, q2, q1)) return true;
   //
   // // p2, q2 and p1 are colinear and p1 lies on segment p2q2
-  // if (o3 == 0 && onSegment(p2, p1, q2)) return true;
+  // if (o3 == 0 && PointOnSegment(p2, p1, q2)) return true;
   //
   //  // p2, q2 and q1 are colinear and q1 lies on segment p2q2
-  // if (o4 == 0 && onSegment(p2, q1, q2)) return true;
+  // if (o4 == 0 && PointOnSegment(p2, q1, q2)) return true;
 
   return false; // Doesn't fall in any of the above cases
 }
@@ -297,6 +323,29 @@ Applet.prototype.FindNodePosition = function(charge)
   var new_node = (charge.nodes[gap_after] + biggest_gap*0.5)%(TWO_PI);
   charge.nodes.push(new_node);
   return new_node;
+}
+
+
+Applet.prototype.FindPositionOfU  = function(input,Utarget,Utolerance)
+{
+  // Takes an input object: {E: E{E,U,x,y}, x, y}}
+  // Returns a similar output object at the best guess for Utarget.
+  // Follows the field line at point input.x,input.y until it converges on the Utarget
+  
+  // We know that U = - delE
+  // so by newton-raphson method...
+  // distance to go along field line = (U1 - Utarget) / E
+  var out = input;
+  var it = 0;
+  while(Math.abs(out.U - Utarget) > Utolerance) {
+    it++;
+    var delta = (out.U - Utarget) / out.E;
+    var x = out.x + ( delta * out.gx );
+    var y = out.y + ( delta * out.gy );
+    out = this.Field(x,y);
+  }
+  // console.log("converge in ", it, "Accuracy: ",out.E.U - Utarget);
+  return out;
 }
 
 
@@ -356,8 +405,8 @@ Applet.prototype.SeedNodes = function(charge)
   //   var nstart = 0;
   //   do {
   //     var E = this.Field(x,y);
-  //     var dx = E.x * step/10;
-  //     var dy = E.y * step/10;
+  //     var dx = E.gx * step/10;
+  //     var dy = E.gy * step/10;
   //     x += dx*dir;
   //     y += dy*dir;
   //     deltax = x-charge.x;
@@ -377,12 +426,10 @@ Applet.prototype.SeedNodes = function(charge)
 }
 
 
+
+
 Applet.prototype.FindFieldLines = function()
 {
-  // configuration:
-  var step = 0.05;
-  var start_step = 0.001;
-  var max_steps = 1000;
   
 
   this.fieldLines = [];
@@ -447,14 +494,15 @@ Applet.prototype.FindFieldLines = function()
       while(!traceFinished) {
         nstep++;
         var E = this.Field(x,y);
-        var dx = E.x * step *dir;
-        var dy = E.y * step *dir;
+        var dx = E.gx * step *dir;
+        var dy = E.gy * step *dir;
 
         // Parasitic calculation. Find line segments that cross equipotential lines.
+        if(do_equipotential) 
         {
           var span = SpansIntegerMultiple(lastE.U, E.U, potential_multiple);
           if(span!=null) {
-            pnode = { U: span*potential_multiple, x1:x, y1:y, x2:x+dx, y2:y+dy, E1: lastE, E2: E };
+            pnode = { U: span*potential_multiple, E1: lastE, E2: E };
             this.potentialnodes.push(pnode);
           }
         }
@@ -519,51 +567,66 @@ Applet.prototype.FindFieldLines = function()
   // Find equipotential lines.
   // Trace around all the equpotenial nodes we've found.
   console.log("looking at potentialnodes: ", this.potentialnodes.length);
+
   while(this.potentialnodes.length>0) {
     var pnode = this.potentialnodes.shift();
+    var Utarget = pnode.U;
     // Fresh node. Approximate the point of best potential.
-    var fU = (pnode.U - pnode.E1.U)/(pnode.E2.U-pnode.E1.U);
-    if(pnode.E2.U < pnode.E1.U) fU = -fU;
-    var startx = pnode.x1 + fU*(pnode.x2-pnode.x1);
-    var starty = pnode.y1 + fU*(pnode.y2-pnode.y1);
-    var startE = this.Field(startx,starty);
+    console.log("Trying node, Utarget=",Utarget);
+
+    var point = pnode.E1;  // Pick one of the two end segments.
+    point = this.FindPositionOfU(point,Utarget,Utolerance);
+    var xstart = point.x;
+    var ystart = point.y;
+    // var fU = (pnode.U - pnode.E1.U)/(pnode.E2.U-pnode.E1.U);
+    // if(pnode.E2.U < pnode.E1.U) fU = -fU;
+    // var startx = pnode.x1 + fU*(pnode.x2-pnode.x1);
+    // var starty = pnode.y1 + fU*(pnode.y2-pnode.y1);
+    // var startE = this.Field(startx,starty);
     // Start tracing this equpotential back and forth.
     for(var dir = -1; dir<3; dir +=2) {
-      var E = startE;
-      var x = startx;
-      var y = starty;
-      var line = {U: pnode.U, points:[{x:x,y:y}]};
+      var line = {U: Utarget, points:[{x:point.x,y:point.y}]};
       var done = false;
-      console.log("start line at",startE.U,pnode.U,pnode);
+      // console.log("start line at",startE.U,pnode.U,pnode);
       var np = 0;
       while(!done) {
         np++;
-        var dx =  E.y * step*0.01 * dir;  // Not a typo. We're going perpendicular to the lines.
-        var dy = -E.x * step*0.01 * dir; 
+        // console.log(point);
+        var newx =  point.x + point.gy * step_equi * dir;  // Not a typo. .
+        var newy =  point.y - point.gx * step_equi * dir;  // We're going perpendicular to the field!
+        var next_point = this.Field(newx,newy);        
+        var next_point = this.FindPositionOfU(next_point,Utarget,Utolerance); // refine
+        
         // Check for intersection with other potentialnodes. Delete them as we go.
         for(var i=0;i<this.potentialnodes.length;i++) {
-          var othernode = this.potentialnodes[i];
-          if(LineSegmentsIntersect({x:x,y:y},{x:x+dx,y:y+dy},
-                                  {x:othernode.x1,y:othernode.y2},{x:othernode.x2,y:othernode.y2})) {
-            this.potentialnodes.splice(i,1); 
-          };
+            var othernode = this.potentialnodes[i];
+            if(othernode.U == Utarget) {
+              if(LineSegmentsIntersect(point,next_point,
+                                       othernode.E1, othernode.E2)) {
+              console.warn("collide with node!  left:",this.potentialnodes.length);
+              this.potentialnodes.splice(i,1);
+            }
+          }
         }
-        if(np>4 && LineSegmentsIntersect({x:x,y:y},{x:x+dx,y:y+dy},
-                                {x:pnode.x1,y:pnode.y2},{x:pnode.x2,y:pnode.y2})) {
+        // var d2 = (next_point.x - xstart)*(next_point.x - xstart)+(next_point.y - ystart)*(next_point.y - ystart);
+        // console.log("distance from start: ",Math.sqrt(d2));
+        if(np>2 && LineSegmentsIntersect(point,next_point,
+                                          pnode.E1,pnode.E2))  {
           done = true;
-        }
-        if(np>1000) done = true;
-        
-        x += dx;
-        y += dy;
-        E = this.Field(x,y);
-        line.points.push({x:x,y:y});
+          dir+=2; // exit dir loop
+          console.warn("looped line");
+        } else if(np>max_equi_step){
+          console.warn('gave up on line');
+          done = true;
+        } 
+        line.points.push({x:next_point.x,y:next_point.y});
+        point = next_point;
         // console.log(E.U);
       }
       this.equipotential_lines.push(line);
-      console.log("End U at",E.U);
-        
+      console.log("End U at",point.E.U);
     }
+    // break;
   }
   }
  
@@ -632,7 +695,7 @@ Applet.prototype.Draw = function()
   
   this.DrawFieldLines();
   this.DrawCharges();
-  this.DrawEquipotentialLines();
+  if(do_equipotential) this.DrawEquipotentialLines();
   
   this.ctx.restore();
   
@@ -704,12 +767,12 @@ Applet.prototype.DrawFieldLines = function()
 Applet.prototype.DrawEquipotentialLines = function()
 { 
   console.time("Drawing potential lines")
-  this.ctx.lineWidth = 0.02;
-  this.ctx.strokeStyle = "green";
 
   for(var i=0;i<this.equipotential_lines.length;i++) {
     var line = this.equipotential_lines[i];
     this.ctx.beginPath();
+    this.ctx.lineWidth = 0.02;
+    this.ctx.strokeStyle = "green";
     this.ctx.lineJoin = "round";
     this.ctx.moveTo(line.points[0].x,line.points[0].y)
     for(var j=1;j<line.points.length;j++) {
@@ -718,12 +781,15 @@ Applet.prototype.DrawEquipotentialLines = function()
     }
     this.ctx.stroke();
 
+    this.ctx.strokeStyle = "black";
+    this.ctx.lineWidth = 0.01;
+    
     // Make dots.
     // for(var j=0;j<line.points.length;j++) {
     //   this.ctx.beginPath();
     //   var p = line.points[j];
     //   this.ctx.arc(p.x,p.y,0.01,0,Math.PI*2,true);
-    //   this.ctx.fill(); 
+    //   this.ctx.stroke();
     // }
   }
   console.timeEnd("Drawing potential lines")
@@ -870,7 +936,7 @@ Applet.prototype.AddCharge = function(ev)
   var x = xy.x;
   var y = xy.y;
   
-  var charge = { q : q,  x : x,  y: y , r:0.12*Math.abs(q)};
+  var charge = { q : q,  x : x,  y: y , r: 0.12*Math.sqrt(Math.abs(q))};
   this.charges.push(charge);
   
   this.dragging = true;
