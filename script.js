@@ -696,7 +696,7 @@ Applet.prototype.Draw = function()
     if(i==0) urlparams+="?";
     else   urlparams += "&";
     urlparams += "q"+i+"=";
-    urlparams += this.charges[i].q + "," + this.charges[i].x + "," + this.charges[i].y;
+    urlparams += this.charges[i].q + "," + parseFloat(this.charges[i].x.toFixed(3)) + "," + (parseFloat(this.charges[i].y.toFixed(3)));
   }
   $('#totalenergy').html("Total Energy: "+this.TotalEnergy().toFixed(1));
   $('#linktothis').attr('href',urlparams);
