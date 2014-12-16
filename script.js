@@ -5,13 +5,12 @@ var k = 10; // 1/4 pi epsilon naught
 
 
 // configuration:
-var step = 0.05;
+var step = 0.06;
 var start_step = 0.001;
 var max_steps = 1000;
 
 
-var do_equipotential = true;
-var Utolerance = 0.01;
+var Utolerance = 0.001;
 var step_equi = 0.1;
 var max_equi_step = 100;
 
@@ -29,6 +28,7 @@ for(var r=2;r<1000;r++) myRandom.push(Math.random()*Math.PI*2);
 
 $(function(){
   applet = new Applet($('div#sim'));
+
   $('#downloadlink').bind('click' ,function(ev) { 
     
     var dt = applet.canvas .toDataURL('image/png');
@@ -82,7 +82,6 @@ function Applet(element, options)
     console.log("Pad: Zero-length jquery selector provided."); return;
   }
   this.element = $(element).get(0); 
-
 
 
   // Build the drawing context.
@@ -147,6 +146,17 @@ function Applet(element, options)
   $(window).bind('touchend',function(ev) { return self.DoMouse(ev); });
   $('.addcharge').bind('touchstart' ,function(ev) { return self.AddCharge(ev); });  
 
+  $('#ctl-do-eqipotential').click(function(){ self.Draw();});
+  $('#ctl-zoom-in').click(function(){ self.DoZoom(1); });
+  $('#ctl-zoom-out').click(function(){ self.DoZoom(-1); });
+  
+
+}
+
+Applet.prototype.DoZoom = function( zoom )
+{
+  this.width_x -= zoom;
+  this.Draw();
 }
 
 Applet.prototype.Resize = function()
@@ -498,7 +508,7 @@ Applet.prototype.FindFieldLines = function()
         var dy = E.gy * step *dir;
 
         // Parasitic calculation. Find line segments that cross equipotential lines.
-        if(do_equipotential) 
+        if(this.do_equipotential) 
         {
           var span = SpansIntegerMultiple(lastE.U, E.U, potential_multiple);
           if(span!=null) {
@@ -563,7 +573,7 @@ Applet.prototype.FindFieldLines = function()
     } // nodeFinished
   }
   
-  if(do_equipotential){
+  if(this.do_equipotential){
   // Find equipotential lines.
   // Trace around all the equpotenial nodes we've found.
   console.log("looking at potentialnodes: ", this.potentialnodes.length);
@@ -658,6 +668,8 @@ Applet.prototype.Draw = function()
   this.Clear();
   this.ctx.save();
   
+  this.do_equipotential = $('#ctl-do-eqipotential').is(":checked");
+  
   this.canvas_translate = { x: this.canvas.width/2, y: this.canvas.height/2};
   this.canvas_scale     = { x: this.canvas.width/this.width_x, y: -this.canvas.width/this.width_x};
   
@@ -695,7 +707,7 @@ Applet.prototype.Draw = function()
   
   this.DrawFieldLines();
   this.DrawCharges();
-  if(do_equipotential) this.DrawEquipotentialLines();
+  if(this.do_equipotential) this.DrawEquipotentialLines();
   
   this.ctx.restore();
   

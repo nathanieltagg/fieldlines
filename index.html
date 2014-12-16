@@ -64,14 +64,20 @@ div#controls
   margin:10px;
   border: 1px solid;
   z-index: 3;
-
+  overflow-x:none;
+  
   pointer-events:none;
   -moz-user-select: none; -webkit-user-select: none; -ms-user-select:none; user-select:none;
   background-color: white;
 }
-button {
+input, button, label {
   pointer-events:all;
 }
+
+.bttn {
+  pointer-events:all;  
+}
+
 div#controls a  {
   pointer-events:all;
 }
@@ -209,22 +215,20 @@ div#controls .addcharge  {
         <br/>Drag out of window to remove.
       </div>
 
-    <div style="display:inline-block">
     
+    
+    <div style="display:inline-block">
+      <div style="margin:5px"><span class="bttn" id="ctl-zoom-in">Zoom In</span></div>
+      <div style="margin:5px"><span class="bttn" id="ctl-zoom-out">Zoom Out</span></div>
+      <div style="margin:5px"><label><input type ="checkbox" id="ctl-do-eqipotential" />Show Equipotential Lines</label></div>
+    </div>
+    
+    <div style="display:inline-block">
       <div style="margin:5px"><a class="bttn" id="do-popup" href="#">More Help</a></div>
       <div style="margin:5px"><a class="bttn" id="downloadlink" href='#' download="FieldLines.png">Download Image</a></div>
       <div style="margin:5px"><a class="bttn" id="linktothis" href='#'>Link to this arrangement</a></div>
     </div>
-    
-    <div style="display:inline-block">
-    
-     
-    </div>
 
-
-
-    <!-- Help and info -->
-  <div id="debug"></div>
 
     <div style="display:inline-block">
         <b>Electric Field Lines</b><br/>
@@ -235,9 +239,13 @@ div#controls .addcharge  {
     <div style="display:inline-block">
       <a href="http://www.otterbein.edu/public/Academics/Departments/Physics.aspx"><img style="height:50px" src="Otterbein.png" /></a>
     </div>
+    <!-- Help and info -->
+  <div id="debug"></div>
     
 
-  </div>
+  </div> <!-- controls box -->
+  
+  
   <div id="totalenergy"></div>
 
 
