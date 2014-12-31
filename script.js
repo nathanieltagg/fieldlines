@@ -304,6 +304,11 @@ function LineSegmentsIntersect(p1,q1,  // first line segment points
 
 Applet.prototype.FindNodePosition = function(charge)
 {
+  // If this is a virgin charge. Find seed positions.
+  if(charge.nodes.length == 0 && charge.nodesNeeded.length == 0) { 
+    this.SeedNodes(charge,0);
+  }
+
   // See if there are some precomputed positions to try.
   if(charge.nodesNeeded && charge.nodesNeeded.length>0) {
     var t = charge.nodesNeeded.shift();
@@ -311,11 +316,6 @@ Applet.prototype.FindNodePosition = function(charge)
     return t;
   }
 
-  // If this is a virgin charge, just push 0 radius:
-  if(charge.nodes.length == 0) { 
-    charge.nodes.push(0);
-    return 0;
-  }
 
   charge.nodes.sort();
   // bifurcate biggest arc
@@ -359,12 +359,14 @@ Applet.prototype.FindPositionOfU  = function(input,Utarget,Utolerance)
 }
 
 
-Applet.prototype.SeedNodes = function(charge)
+Applet.prototype.SeedNodes = function(charge,startangle)
 {
   // // Original algorithm: Space 'needed' nodes around evenly.
   for(var j = 0; j<charge.n_nodes; j++) {
-    charge.nodesNeeded.push(TWO_PI*j/charge.n_nodes);
-  }  
+    charge.nodesNeeded.push(
+      (startangle + TWO_PI*j/charge.n_nodes)%TWO_PI 
+    );
+  }
 
 
   // // Algorithm 2: Space 'needed' nodes around accoring to the
@@ -436,6 +438,31 @@ Applet.prototype.SeedNodes = function(charge)
 }
 
 
+Applet.prototype.DoCollision = function(collide,x,y)
+{
+  // console.warn("collided with charge that has ",collide.nodesNeeded.length,"left ")
+  dx = x-collide.x;
+  dy = y-collide.y;
+  var angle = (Math.atan2(dy,dx)+TWO_PI)%TWO_PI;
+  
+  
+  collide.nodes.push(angle);
+  collide.nodesUsed.push(angle);
+  
+  if(collide.nodesUsed.length==1) {
+    // This is the first line to collide. Seed other positions around this.
+    this.SeedNodes(collide,angle);
+  }
+    
+  var best = 0;
+  var bestdiff = 9e9;
+  for(var k=0; k<collide.nodesNeeded.length;k++){
+      var diff = Math.abs( (collide.nodesNeeded[k] - angle)%(2*Math.PI) );
+      if(diff<bestdiff) {bestdiff = diff; best = k};
+  }
+  collide.nodesNeeded.splice(best,1);
+  
+}
 
 
 Applet.prototype.FindFieldLines = function()
@@ -450,11 +477,11 @@ Applet.prototype.FindFieldLines = function()
   for(var i=0 ;i<this.charges.length; i++) {
     var charge = this.charges[i];
     total_charge += charge.q;
+    charge.r = 0.12*Math.sqrt(Math.abs(charge.q));
     charge.n_nodes = Math.round(Math.abs(source_lines_per_unit_charge*charge.q));
     charge.nodes = []; // All successful or unsuccesful nodes
     charge.nodesUsed = []; // Nodes that have actually worked.
     charge.nodesNeeded = []; // Some idea what nodes we should try.
-    this.SeedNodes(charge);
   }
   
 
@@ -531,25 +558,9 @@ Applet.prototype.FindFieldLines = function()
             // console.warn("Line failed - hit q=",collide.q,"which has no nodes left.");
             nodeFinished=false;
           } else {
-            // console.warn("collided with charge that has ",collide.nodesNeeded.length,"left ")
+            this.DoCollision(collide,x,y);
             nodeFinished = true;
-            dx = x-collide.x;
-            dy = y-collide.y;
-            var angle = (Math.atan2(dy,dx)+TWO_PI)%TWO_PI;
-            
-            collide.nodes.push(angle);
-            collide.nodesUsed.push(angle);
-              
-            var best = 0;
-            var bestdiff = 9e9;
-            for(var k=0; k<collide.nodesNeeded.length;k++){
-                var diff = Math.abs( (collide.nodesNeeded[k] - angle)%(2*Math.PI) );
-                if(diff<bestdiff) {bestdiff = diff; best = k};
-            }
-            collide.nodesNeeded.splice(best,1);
-            // fieldline.endNodeAngle = collide.nodesNeeded[best];
             fieldline.endCharge = collide;
-            fieldline.endAngle     = angle;
             fieldline.nstep = nstep;
 
             console.log("Line succeeded - hit q=",collide.q);
