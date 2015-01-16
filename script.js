@@ -1,6 +1,6 @@
 var TWO_PI = Math.PI * 2;
 
-var source_lines_per_unit_charge = 6;
+var source_lines_per_unit_charge = 10;
 var k = 10; // 1/4 pi epsilon naught
 
 
@@ -465,6 +465,76 @@ Applet.prototype.DoCollision = function(collide,x,y)
 }
 
 
+Applet.prototype.TraceFieldLine = function(fieldline)
+{
+  console.log(fieldline);
+  var x = fieldline.start_x;
+  var y = fieldline.start_y;
+  
+  fieldline.points  = [{x:x,y:y}];
+  var lastE = this.Field(x,y);
+
+  var traceFinished = false;
+  var nstep = 0;
+  while(true) {
+    nstep++;
+    var E = this.Field(x,y);
+    
+    var dx = E.gx * step *fieldline.dir;
+    var dy = E.gy * step *fieldline.dir;
+
+    // Parasitic calculation. Find line segments that cross equipotential lines.
+    if(this.do_equipotential) 
+    {
+      var span = SpansIntegerMultiple(lastE.U, E.U, potential_multiple);
+      if(span!=null) {
+        pnode = { U: span*potential_multiple, E1: lastE, E2: E };
+        this.potentialnodes.push(pnode);
+      }
+    }
+    
+    // This check doesn't work.
+    // I've also tried the form of E/U, which should check for small field in high-potential areas (which is what I want to check)
+    // I can't just check for small field, because that happens naturally at large distances from the middle.
+    // if(Math.abs(E.E) < 1 && Math.abs(E.U) > 2) {
+    //   console.log("Line went through effective zero-field region. This isn't a good line. E=",E.E," U=",E.U, " step=",step);
+    //   return false;
+    // }
+    
+    x += dx;
+    y += dy;
+    fieldline.points.push({x:x,y:y});        
+    lastE = E;
+
+  
+    var collide = this.FindCollision(x,y);
+    if(collide && (fieldline.dir*collide.q < 0) && nstep>1) {
+      // Find the best possible node for this line.
+      if(collide.n_nodes >= collide.nodes.length+1 == 0) {
+        console.warn("Line failed - hit q=",collide.q,"which has no nodes left.");
+        return false; //nodeFinished=false; 
+      } else {
+        this.DoCollision(collide,x,y);
+        fieldline.endCharge = collide;
+        fieldline.nstep = nstep;
+        console.log("Line succeeded - hit q=",collide.q);
+        return true; // nodeFinished
+      }
+    }
+              
+    if(nstep>max_steps){
+      fieldline.endCharge = null;
+      fieldline.endAngle     = null;
+      fieldline.endNodeAngle = null;
+      fieldline.nstep = nstep;
+      console.log("Line succeeded - no hit");
+      return true;
+    }  // if nstep 
+  } // trace loop
+}
+
+
+
 Applet.prototype.FindFieldLines = function()
 {
   
@@ -473,7 +543,13 @@ Applet.prototype.FindFieldLines = function()
   this.potentialnodes = []; 
   this.equipotential_lines = [];
 
+
   var total_charge = 0;
+  var max_x = -1e20;
+  var min_x =  1e20;
+  var max_y = -1e20;
+  var min_y =  1e20;
+  var max
   for(var i=0 ;i<this.charges.length; i++) {
     var charge = this.charges[i];
     total_charge += charge.q;
@@ -482,6 +558,10 @@ Applet.prototype.FindFieldLines = function()
     charge.nodes = []; // All successful or unsuccesful nodes
     charge.nodesUsed = []; // Nodes that have actually worked.
     charge.nodesNeeded = []; // Some idea what nodes we should try.
+    if(charge.x > max_x) max_x = charge.x;
+    if(charge.x < min_x) min_x = charge.x;
+    if(charge.y > max_y) max_y = charge.y;
+    if(charge.y < min_y) min_y = charge.y;
   }
   
 
@@ -489,9 +569,38 @@ Applet.prototype.FindFieldLines = function()
   this.charges.sort(chargesort);
   if(total_charge<0) this.charges.reverse();
 
+  console.log("Doing escaping lines -------------- ");
+  // Find fieldlines that come from outside the area, assuming there is a majority charge carrier.
+  var escaping_lines = Math.abs(total_charge* source_lines_per_unit_charge);
+  for(var i=0;i<escaping_lines;i++) {
+    console.log("Doing escaping line.");
+    // Find a position very far away from the charges.
+    var r = Math.max(this.xmax,this.ymax) * 10;
+    if(isNaN(r)) r = 10;
+    var theta = i*2*3.14159/escaping_lines;
+    var x =  r*Math.cos(theta);
+    var y =  r*Math.sin(theta);
+    
+    var fieldline = { startCharge: null };
+    if(total_charge > 0)  fieldline.dir = -1;
+    else                  fieldline.dir = 1;
+    fieldline.start_x = x;
+    fieldline.start_y = y;
+    fieldline.start = "outside";
+    var nodeFinished = this.TraceFieldLine(fieldline); 
+    if(nodeFinished) {
+      this.fieldLines.push(fieldline);      
+    } else {
+      console.log("incoming line failed");
+    }
+    
+  }
+  
+
+
   // Now loop through again, finding unused nodes and tracing field lines from those
   // nodes until they either hit another charge or they require too many computational cycles.
-  
+
   for(var i=0 ;i<this.charges.length; i++) {
     var random_seed = 0;
     var charge = this.charges[i];    
@@ -500,83 +609,29 @@ Applet.prototype.FindFieldLines = function()
     console.log("Doing charge",i,"with q=",charge.q,"which has ",charge.nodesUsed.length,"/",charge.n_nodes," nodes");
 
 
-    while(charge.nodesUsed.length < charge.n_nodes && charge.nodes.length<105) {
-      if(charge.nodes.length>100) {
+    while(charge.nodesUsed.length < charge.n_nodes && charge.nodes.length<source_lines_per_unit_charge*5) {
+      if(charge.nodes.length>source_lines_per_unit_charge*4) {
         console.warn("Wow! Tried way too many nodes.",charge.nodes);
       }
+      console.log("Doing node on charge",i);
       
       var start_angle = this.FindNodePosition(charge);
 
       var r = charge.r;
       // Boost in initial direction by radius.
       var fieldline = { startCharge: charge };
-
+      fieldline.start = "charge";
       var nodeFinished = false;
 
       // console.log("Try: ",nodeTries,"Trying angle:",start_angle*180/Math.PI,nodeTries);
-      var x = charge.x + charge.r* Math.cos(start_angle);
-      var y = charge.y + charge.r* Math.sin(start_angle);
-      //console.log("Start xy",x,y);
+      fieldline.start_x = charge.x + charge.r* Math.cos(start_angle);
+      fieldline.start_y = charge.y + charge.r* Math.sin(start_angle);
+      fieldline.start_angle = start_angle;
       var dir = 1;
       if(charge.q<0) dir = -1;
-      fieldline.start_angle = start_angle;
-      fieldline.start_x = x;
-      fieldline.start_y = y;
       fieldline.dir     = dir;
-      fieldline.points  = [{x:x,y:y}];
-      var lastE = this.Field(x,y);
-
-      var traceFinished = false;
-      var nstep = 0;
-      while(!traceFinished) {
-        nstep++;
-        var E = this.Field(x,y);
-        var dx = E.gx * step *dir;
-        var dy = E.gy * step *dir;
-
-        // Parasitic calculation. Find line segments that cross equipotential lines.
-        if(this.do_equipotential) 
-        {
-          var span = SpansIntegerMultiple(lastE.U, E.U, potential_multiple);
-          if(span!=null) {
-            pnode = { U: span*potential_multiple, E1: lastE, E2: E };
-            this.potentialnodes.push(pnode);
-          }
-        }
-        
-        x += dx;
-        y += dy;
-        fieldline.points.push({x:x,y:y});        
-        lastE = E;
-
       
-        var collide = this.FindCollision(x,y);
-        if(collide && (charge.q*collide.q < 0) && nstep>1) {
-          traceFinished = true;
-          // Find the best possible node for this line.
-          if(collide.n_nodes >= collide.nodes.length+1 == 0) {
-            // console.warn("Line failed - hit q=",collide.q,"which has no nodes left.");
-            nodeFinished=false;
-          } else {
-            this.DoCollision(collide,x,y);
-            nodeFinished = true;
-            fieldline.endCharge = collide;
-            fieldline.nstep = nstep;
-
-            console.log("Line succeeded - hit q=",collide.q);
-          }
-        }
-                  
-        if(nstep>max_steps){
-          fieldline.endCharge = null;
-          fieldline.endAngle     = null;
-          fieldline.endNodeAngle = null;
-          traceFinished = true;
-          fieldline.nstep = nstep;
-          nodeFinished = true;       
-          // console.log("Line succeeded - no hit");
-        }  // if nstep 
-      } // traceFinished  
+      var nodeFinished = this.TraceFieldLine(fieldline); 
       if(nodeFinished) {
         charge.nodesUsed.push(start_angle);
         this.fieldLines.push(fieldline);      
@@ -743,18 +798,20 @@ Applet.prototype.DrawFieldLines = function()
     }
     this.ctx.stroke();
     
+    var n = line.points.length;
     // Add arrow. Find the midway point along the line.
-    var j = Math.round((line.points.length-1)/2);
+    var j = Math.round((n-1)/2);
     // console.log(j,line.points.length);
     var x = line.points[j].x;
     var y = line.points[j].y;
     // Ensure arrow is on the screen - keep halving the midway point until we reach it.
     while(x<this.xmin || x>this.xmax || y<this.ymin || y>this.ymax) {
-      j = Math.round(j/2);
+      if(line.start == "outside") j = Math.round(n-(n-j)/2);
+      else                        j = Math.round(j/2);
       x = line.points[j].x;
       y = line.points[j].y;
       //console.log(j);
-      if(j<=1) break;
+      if(j<=1 || j>=n-3) break;
     }
     dx = line.dir*(line.points[j+1].x - x);
     dy = line.dir*(line.points[j+1].y - y);
