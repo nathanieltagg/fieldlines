@@ -28,6 +28,20 @@ for(var r=2;r<1000;r++) myRandom.push(Math.random()*Math.PI*2);
 
 $(function(){
   applet = new Applet($('div#sim'));
+  $('#lines_per_unit_charge').html(source_lines_per_unit_charge);
+  
+  $('#lines_slider').slider({
+    value: source_lines_per_unit_charge,
+    min: 3,
+    max: 30,
+    step: 1,
+    slide: function(event,ui) {  source_lines_per_unit_charge = ui.value; 
+                                $('#lines_per_unit_charge').html(source_lines_per_unit_charge);
+                                applet.Draw(); 
+                              }
+  });
+  
+
 
   $('#downloadlink').bind('click' ,function(ev) { 
     

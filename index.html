@@ -9,6 +9,8 @@
 <title>Electric Field</title>
 
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
 
 <!-- firebug lite, for debugging on random browswers. -->
 <!-- <script type='text/javascript' 
@@ -223,14 +225,19 @@ div#controls .addcharge  {
       <div style="margin:5px"><label><input type ="checkbox" id="ctl-do-eqipotential" />Show Equipotential Lines</label></div>
     </div>
     
-    <div style="display:inline-block">
+    <div style="display:inline-block; vertical-align: top;">
       <div style="margin:5px"><a class="bttn" id="do-popup" href="#">More Help</a></div>
       <div style="margin:5px"><a class="bttn" id="downloadlink" href='#' download="FieldLines.png">Download Image</a></div>
       <div style="margin:5px"><a class="bttn" id="linktothis" href='#'>Link to this arrangement</a></div>
     </div>
 
 
-    <div style="display:inline-block">
+    <div style="display:inline-block;  vertical-align: top; width:100px; margin-top: 5px;">
+      Lines per unit charge: <span id='lines_per_unit_charge'>10</span><br/>  
+      <div id='lines_slider' style="margin: 5px; pointer-events:all; "></div>
+    </div>
+  
+    <div style="display:inline-block; vertical-align: top; margin-top: 5px;">
         <b>Electric Field Lines</b><br/>
         by
       <a href="http://faculty.otterbein.edu/NTagg">Nathaniel Tagg</a><br/>
