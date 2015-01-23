@@ -251,6 +251,7 @@ Applet.prototype.FindCollision = function(x,y)
 function chargesort(a,b)
 {
   var cmp = a.q - b.q;
+  if(cmp==0) cmp = a.y - b.y;
   return cmp;
 }
 
@@ -532,8 +533,9 @@ Applet.prototype.TraceFieldLine = function(fieldline)
     if(collide && (fieldline.dir*collide.q < 0) && nstep>1) {
       // Find the best possible node for this line.
       if(collide.n_nodes >= collide.nodes.length+1 == 0) {
-        console.warn("Line failed - hit q=",collide.q,"which has no nodes left.");
-        return false; //nodeFinished=false; 
+        // Comment these lines out if you want it to just sail through without stopping...
+        // console.warn("Line failed - hit q=",collide.q,"which has no nodes left.");
+        // return false; //nodeFinished=false;
       } else {
         this.DoCollision(collide,x,y);
         fieldline.endCharge = collide;
