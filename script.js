@@ -16,6 +16,8 @@ var max_equi_step = 100;
 
 var potential_multiple = 3;
 
+var hide_charge_values = false;
+
 
 // A list of random things values from zero to twopi, as trial seeds for directions
 var myRandom = [];
@@ -28,8 +30,7 @@ for(var r=2;r<1000;r++) myRandom.push(Math.random()*Math.PI*2);
 
 $(function(){
   applet = new Applet($('div#sim'));
-  $('#lines_per_unit_charge').html(source_lines_per_unit_charge);
-  
+  $('#lines_per_unit_charge').html(source_lines_per_unit_charge);  
   $('#lines_slider').slider({
     value: source_lines_per_unit_charge,
     min: 3,
@@ -134,6 +135,12 @@ function Applet(element, options)
                          y:parseFloat(list[2]),
                          r:Math.abs(parseFloat(list[0]))*0.12});
     }
+  }
+  if(urlParams.lines) {
+    source_lines_per_unit_charge = urlParams.lines;
+  }
+  if(urlParams.hideq) {
+    hide_charge_values = true;
   }
   
   if(this.charges.length==0) this.charges = [
@@ -777,6 +784,8 @@ Applet.prototype.Draw = function()
     else   urlparams += "&";
     urlparams += "q"+i+"=";
     urlparams += this.charges[i].q + "," + parseFloat(this.charges[i].x.toFixed(3)) + "," + (parseFloat(this.charges[i].y.toFixed(3)));
+    if(hide_charge_values) urlparams += "&hideq=1";
+    urlparams+="&lines=" + source_lines_per_unit_charge;
   }
   $('#totalenergy').html("Total Energy: "+this.TotalEnergy().toFixed(1));
   $('#linktothis').attr('href',urlparams);
@@ -930,7 +939,7 @@ Applet.prototype.DrawCharges = function()
     if(charge.q<0) s = "-";
     else           s = "+";
     s += parseInt(Math.abs(charge.q));
-    if(this.ctx.fillText) // protect against old browsers
+    if(!hide_charge_values) // protect against old browsers
       this.ctx.fillText(s,0,0);
     this.ctx.restore();
   }
