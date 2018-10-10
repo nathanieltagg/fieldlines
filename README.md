@@ -26,6 +26,10 @@ This simulation could probably be improved by iterating on the field lines, and 
 charges to try to even out the spacing, but this would make the simulation non-responsive.  
 Source code is available for forking at <a href="https://github.com/nathanieltagg/fieldlines">https://github.com/nathanieltagg/fieldlines</a>
 
+Other work:
+----------
+See also a 3D version of this work: <a href='https://github.com/Awesomeology/EField3d'>https://github.com/Awesomeology/EField3d</a>
+
 Nathaniel Tagg, Dec 2014
 
--
+
