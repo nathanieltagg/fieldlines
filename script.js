@@ -5,6 +5,7 @@ var k = 10; // 1/4 pi epsilon naught
 
 
 // configuration:
+// var step = 0.06;
 var step = 0.06;
 var start_step = 0.001;
 var max_steps = 1000;
@@ -149,7 +150,9 @@ function Applet(element, options)
                               { q : -2, x : 1.001,   y:-1 , r:Math.sqrt(2)*0.12 },
                               ];
   
-  
+  this.estMode = $("#estMode").val();
+
+
   this.FindFieldLines();
   this.Draw();
 
@@ -170,7 +173,7 @@ function Applet(element, options)
   $('#ctl-do-eqipotential').click(function(){ self.Draw();});
   $('#ctl-zoom-in').click(function(){ self.DoZoom(1); });
   $('#ctl-zoom-out').click(function(){ self.DoZoom(-1); });
-  
+  $("#estMode").on("change",function(){ self.estMode = $(this).val();  self.Draw();})
 
 }
 
@@ -212,6 +215,7 @@ Applet.prototype.Field = function(x,y)
     var r2 = dx*dx+dy*dy;
     var r = Math.sqrt(r2);
     var E = c.q/r2;
+    // var E = c.q/r;
     Ex += dx/r*E;
     Ey += dy/r*E;
     U += c.q/r;
@@ -461,7 +465,7 @@ Applet.prototype.SeedNodes = function(charge,startangle)
 
 
 Applet.prototype.DoCollision = function(collide,x,y)
-{
+{ 
   // console.warn("collided with charge that has ",collide.nodesNeeded.length,"left ")
   dx = x-collide.x;
   dy = y-collide.y;
@@ -498,33 +502,49 @@ Applet.prototype.TraceFieldLine = function(fieldline)
 
   var traceFinished = false;
   var nstep = 0;
+  var dist = 0;
   while(true) {
     nstep++;
     var E = this.Field(x,y);
-    
-    var dx = E.gx * step *fieldline.dir;
-    var dy = E.gy * step *fieldline.dir;
+    var h = step * fieldline.dir; // step size.
+
+    // version 1: Euler.
+    if(this.estMode==1) {
+      var dx = E.gx * h;
+      var dy = E.gy * h;
+      x += dx;
+      y += dy;
+      dist += h;
+    } else {// if(this.estMode==4)
+      // version 2: Runga-kutta 4th order.
+      var E2 = this.Field(x+E.gx *h/2, y+E.gy *h/2);
+      var E3 = this.Field(x+E2.gx*h/2, y+E2.gy*h/2);
+      var E4 = this.Field(x+E3.gx*h  , y+E3.gy*h  );
+      var dx = (E.gx + E2.gx*2 + E3.gx*2 + E4.gx )*h/6;
+      var dy = (E.gy + E2.gy*2 + E3.gy*2 + E4.gy )*h/6;
+      x+=dx;
+      y+=dy;
+      dist += Math.sqrt(dx*dx + dy*dy);
+      var theta = (Math.atan2(dy,dx)%(2*Math.PI))*180/Math.PI; // polar angle direction of RK
+      var theta2 =(Math.atan2(E.gy*h,E.gx*h)%(2*Math.PI))*180/Math.PI; // ditto euler
+      // console.error(theta-theta2);
+      // note that this may not be exactly length h, but who cares?
+    }
+    // Fixme adapative euler!
 
     // Parasitic calculation. Find line segments that cross equipotential lines.
-    if(this.do_equipotential) 
-    {
+    // FIXME: I could do this seperately by simply following a line that is perp to E (clockwise). Doesn't work in 3d.
+    // if(this.do_equipotential) 
+    if(!fieldline.startCharge || dist > fieldline.startCharge.r){
       var span = SpansIntegerMultiple(lastE.U, E.U, potential_multiple);
       if(span!=null) {
         pnode = { U: span*potential_multiple, E1: lastE, E2: E };
         this.potentialnodes.push(pnode);
       }
     }
-    
-    // This check doesn't work.
-    // I've also tried the form of E/U, which should check for small field in high-potential areas (which is what I want to check)
-    // I can't just check for small field, because that happens naturally at large distances from the middle.
-    // if(Math.abs(E.E) < 1 && Math.abs(E.U) > 2) {
-    //   console.log("Line went through effective zero-field region. This isn't a good line. E=",E.E," U=",E.U, " step=",step);
-    //   return false;
-    // }
-    
-    x += dx;
-    y += dy;
+        
+
+
     fieldline.points.push({x:x,y:y});        
     lastE = E;
 
@@ -666,12 +686,13 @@ Applet.prototype.FindFieldLines = function()
   // Find equipotential lines.
   // Trace around all the equpotenial nodes we've found.
   console.log("looking at potentialnodes: ", this.potentialnodes.length);
-
+  this.potentialnodes.sort(function(a,b){ return a.U - b.U; })
   while(this.potentialnodes.length>0) {
     var pnode = this.potentialnodes.shift();
+    console.log(pnode);
     var Utarget = pnode.U;
     // Fresh node. Approximate the point of best potential.
-    console.log("Trying node, Utarget=",Utarget);
+    // console.log("Trying node, Utarget=",Utarget);
 
     var point = pnode.E1;  // Pick one of the two end segments.
     point = this.FindPositionOfU(point,Utarget,Utolerance);
@@ -702,17 +723,17 @@ Applet.prototype.FindFieldLines = function()
             if(othernode.U == Utarget) {
               if(LineSegmentsIntersect(point,next_point,
                                        othernode.E1, othernode.E2)) {
-              console.warn("collide with node!  left:",this.potentialnodes.length);
-              this.potentialnodes.splice(i,1);
-            }
-          }
+                // console.warn("collide with node!  left:",this.potentialnodes.length);
+                this.potentialnodes.splice(i,1); i--; // need to decrement counter after removing.
+              }
+            } else break; // if list is sorted, should U should match.
         }
         // var d2 = (next_point.x - xstart)*(next_point.x - xstart)+(next_point.y - ystart)*(next_point.y - ystart);
         // console.log("distance from start: ",Math.sqrt(d2));
         if(np>2 && LineSegmentsIntersect(point,next_point,
                                           pnode.E1,pnode.E2))  {
           done = true;
-          dir+=2; // exit dir loop
+          dir=3; // exit dir loop
           console.warn("looped line");
         } else if(np>max_equi_step){
           console.warn('gave up on line');
@@ -723,7 +744,7 @@ Applet.prototype.FindFieldLines = function()
         // console.log(E.U);
       }
       this.equipotential_lines.push(line);
-      console.log("End U at",point.E.U);
+      console.log("End U",Utarget,"at",point);
     }
     // break;
   }
@@ -751,7 +772,7 @@ Applet.prototype.TotalEnergy = function()
   }
   return tot;
 }
-
+ 
 Applet.prototype.Draw = function()
 {
   this.Clear();
@@ -793,6 +814,7 @@ Applet.prototype.Draw = function()
   $('#linktothis').attr('href',urlparams);
 
   console.time("FindFieldLines");
+  console.warn("estmode",this.estMode);
   this.FindFieldLines()
   console.timeEnd("FindFieldLines");
   
@@ -811,7 +833,10 @@ Applet.prototype.DrawFieldLines = function()
   for(var i=0;i<this.fieldLines.length;i++) {
     var line = this.fieldLines[i];
     //console.log("Drawing line ",i);
-    this.ctx.strokeStyle = 'black';
+    // this.ctx.strokeStyle = 'black';
+    var c = 'rgb('+ (10*i).toFixed() + ',' + (i*2).toFixed() + ','+ (50-i).toFixed() + ')';
+    this.ctx.strokeStyle =  c;
+    console.log(c);
     // this.ctx.strokeStyle = 'blue';
     // if(line.startCharge.q >0) this.ctx.strokeStyle = 'red';
     this.ctx.beginPath();
@@ -853,7 +878,7 @@ Applet.prototype.DrawFieldLines = function()
     this.ctx.lineTo(0,-ly);
     this.ctx.lineTo(lx,0);
     this.ctx.closePath();
-    this.ctx.fill();
+    // this.ctx.fill();
     this.ctx.restore();
 
 

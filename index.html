@@ -72,7 +72,7 @@ div#controls
   -moz-user-select: none; -webkit-user-select: none; -ms-user-select:none; user-select:none;
   background-color: white;
 }
-input, button, label {
+input, button, label, select {
   pointer-events:all;
 }
 
@@ -235,6 +235,13 @@ div#controls .addcharge  {
     <div style="display:inline-block;  vertical-align: top; width:100px; margin-top: 5px;">
       Lines per unit charge: <span id='lines_per_unit_charge'>10</span><br/>  
       <div id='lines_slider' style="margin: 5px; pointer-events:all; "></div>
+    </div>
+
+    <div style="display:inline-block;  vertical-align: top; width:100px; margin-top: 5px;">
+      EstMode: <select id="estMode">
+        <option value="1"> Euler </option>
+        <option value="4"> RK4 </option>
+      </select>
     </div>
   
     <div style="display:inline-block; vertical-align: top; margin-top: 5px;">
