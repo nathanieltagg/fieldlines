@@ -552,10 +552,10 @@ Applet.prototype.TraceFieldLine = function(fieldline)
     var collide = this.FindCollision(x,y);
     if(collide && (fieldline.dir*collide.q < 0) && nstep>1) {
       // Find the best possible node for this line.
-      if(collide.n_nodes >= collide.nodes.length+1 == 0) {
+      if(collide.nodesUsed.length >= collide.n_nodes ) {
         // Comment these lines out if you want it to just sail through without stopping...
-        // console.warn("Line failed - hit q=",collide.q,"which has no nodes left.");
-        // return false; //nodeFinished=false;
+        console.warn("Line failed - hit q=",collide,"which has no nodes left.");
+        return false; //nodeFinished=false;
       } else {
         this.DoCollision(collide,x,y);
         fieldline.endCharge = collide;
@@ -632,7 +632,7 @@ Applet.prototype.FindFieldLines = function()
     fieldline.start = "outside";
     var nodeFinished = this.TraceFieldLine(fieldline); 
     if(nodeFinished) {
-      this.fieldLines.push(fieldline);      
+        this.fieldLines.push(fieldline);      
     } else {
       console.log("incoming line failed");
     }
@@ -676,7 +676,6 @@ Applet.prototype.FindFieldLines = function()
       
       var nodeFinished = this.TraceFieldLine(fieldline); 
       if(nodeFinished) {
-        charge.nodesUsed.push(start_angle);
         this.fieldLines.push(fieldline);      
       }
     } // nodeFinished
@@ -833,12 +832,14 @@ Applet.prototype.DrawFieldLines = function()
   for(var i=0;i<this.fieldLines.length;i++) {
     var line = this.fieldLines[i];
     //console.log("Drawing line ",i);
-    // this.ctx.strokeStyle = 'black';
-    var c = 'rgb('+ (10*i).toFixed() + ',' + (i*2).toFixed() + ','+ (50-i).toFixed() + ')';
+    this.ctx.strokeStyle = 'black';
+    // var c = 'rgb('+ (10*i).toFixed()%255 + ',' + (i*5).toFixed()%255 + ','+ (50-5*i).toFixed()%255 + ')';
     // this.ctx.strokeStyle =  c;
-    console.log(c);
+    // console.log(c);
+
     // this.ctx.strokeStyle = 'blue';
-    // if(line.startCharge.q >0) this.ctx.strokeStyle = 'red';
+    // if(line.startCharge && line.startCharge.q >0) this.ctx.strokeStyle = 'red';
+    // if(line.start=="outside") this.ctx.strokeStyle = 'green';
     this.ctx.beginPath();
     this.ctx.lineJoin = "round";
     this.ctx.moveTo(line.start_x,line.start_y)
