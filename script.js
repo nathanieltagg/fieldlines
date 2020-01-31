@@ -835,7 +835,7 @@ Applet.prototype.DrawFieldLines = function()
     //console.log("Drawing line ",i);
     // this.ctx.strokeStyle = 'black';
     var c = 'rgb('+ (10*i).toFixed() + ',' + (i*2).toFixed() + ','+ (50-i).toFixed() + ')';
-    this.ctx.strokeStyle =  c;
+    // this.ctx.strokeStyle =  c;
     console.log(c);
     // this.ctx.strokeStyle = 'blue';
     // if(line.startCharge.q >0) this.ctx.strokeStyle = 'red';
@@ -873,12 +873,11 @@ Applet.prototype.DrawFieldLines = function()
     var lx = 0.2;
     var ly = 0.1;
     this.ctx.beginPath();
-    this.ctx.moveTo(lx,0);
-    this.ctx.lineTo(0,ly);
-    this.ctx.lineTo(0,-ly);
-    this.ctx.lineTo(lx,0);
-    this.ctx.closePath();
-    // this.ctx.fill();
+    this.ctx.moveTo(-lx,ly);
+    this.ctx.lineTo(0,0);
+    this.ctx.lineTo(-lx,-ly);
+    // this.ctx.lineTo(0,ly);
+    this.ctx.stroke();
     this.ctx.restore();
 
 
