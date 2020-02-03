@@ -19,6 +19,9 @@ var potential_multiple = 3;
 
 var hide_charge_values = false;
 
+// For profiling
+// console.log=()=>{};
+// console.warn=()=>{};
 
 // A list of random things values from zero to twopi, as trial seeds for directions
 var myRandom = [];
@@ -688,6 +691,30 @@ Applet.prototype.FindFieldLines = function()
   if(this.do_equipotential){
   // Find equipotential lines.
   // Trace around all the equpotenial nodes we've found.
+
+
+  ///
+  /// Thoughts for next revision
+  ///
+  /// Time is taken looking for intersections, and lines failing to close.
+  /// A line starts, misses some nodes (which spawns more line traces) OR it fails to close and loops.
+  /// 
+  /// 1) Find unique lines.  
+  ///   Find just one line running beteween each charge (1-2, 2-3, 1-3 etc)  Locate equipotential nodes.
+  ///   Include a line from charge to 'outside' if there is one.
+  ///  That still has redundancies, but it's a more limited set of nodes to check.
+
+  /// 2) When tracing, keep track of angle between line segment and every charge point
+  ///    theta_tot += delta_theta,  where delta_theta is the angle subtended by a step relative to that charge.
+  ///    If a line reaches theta_tot ~= 2pi for one or more charges, and ~2*n*pifor the others, we've completed a loop.  
+  ///    Alternatively, just check distance to the original point is small (and is less than some arbitrary max)
+
+  ///    This is faster and will stop over-looping
+
+  /// 3) Make sure we're > radius to each other charge
+
+  /// 4) Try adaptive step-size, with RK or otherwise, so that step-size is adjusted on every go. 
+
   console.log("looking at potentialnodes: ", this.potentialnodes.length);
   this.potentialnodes.sort(function(a,b){ return a.U - b.U; })
   while(this.potentialnodes.length>0) {
@@ -773,6 +800,70 @@ Applet.prototype.FindFieldLines = function()
   
 }
 
+// function AdaptiveRKSolver()
+// {
+//   //See https://people.cs.clemson.edu/~dhouse/courses/817/papers/adaptive-h-c16-2.pdf
+//   const a2=0.2,a3=0.3,a4=0.6,a5=1.0,a6=0.875,b21=0.2,
+//     b31=3.0/40.0,b32=9.0/40.0,b41=0.3,b42 = -0.9,b43=1.2,
+//     b51 = -11.0/54.0, b52=2.5,b53 = -70.0/27.0,b54=35.0/27.0,
+//     b61=1631.0/55296.0,b62=175.0/512.0,b63=575.0/13824.0,
+//     b64=44275.0/110592.0,b65=253.0/4096.0,c1=37.0/378.0,
+//     c3=250.0/621.0,c4=125.0/594.0,c6=512.0/1771.0,
+//     dc5 = -277.00/14336.0;
+//   const dc1=c1-2825.0/27648.0,dc3=c3-18575.0/48384.0,
+//     dc4=c4-13525.0/55296.0,dc6=c6-0.25;
+
+//   // fn is function of the form
+//   // fn(x,y) => { x:x, y:y, dx: dxdt, dy: dydt}
+//   function step(p1,h,fn)
+//   {
+//     // first step
+//     var xtemp = p1.x + b21*h * p1.dxdt;
+//     var ytemp = p1.y + b21*h * p1.dydt;
+
+//     // Second step
+//     var p2 = fn(xtemp,ytemp);
+//     xtemp = p1.x + h*(b31*p1.dx+b32*p2.dx)
+//     ytemp = p1.y + h*(b31*p1.dy+b32*p2.dy)
+
+//     // Third step
+//     var p3 = fn(xtemp,ytemp);
+//     xtemp = p1.x+h*(b41*p1.dx+b42*p2.dx+b43*p3.dx);
+//     ytemp = p1.y+h*(b41*p1.dy+b42*p2.dy+b43*p3.dy);
+
+//     // Third step
+//     var p3 = fn(xtemp,ytemp);
+//     xtemp = p1.x+h*(b41*p1.dx+b42*p2.dx+b43*p3.dx);
+//     ytemp = p1.y+h*(b41*p1.dy+b42*p2.dy+b43*p3.dy);
+
+//     // Fourth
+//     var p4 = fn(xtemp,ytemp);
+//     xtemp = h*(b51*p1.dx + b52*p2.dx + b53*p3.dx + b54*p4.dx);
+//     ytemp = h*(b51*p1.dy + b52*p2.dy + b53*p3.dy + b54*p4.dy);
+
+//     //fifth 
+//     p5 = fn(xtemp,ytemp);
+
+// ytemp[i]=y[i]+h*(b41*dydx[i]+b42*ak2[i]+b43*ak3[i]);
+// (*derivs)(x+a4*h,ytemp,ak4); Fourth step.
+// for (i=1;i<=n;i++)
+// ytemp[i]=y[i]+h*(b51*dydx[i]+b52*ak2[i]+b53*ak3[i]+b54*ak4[i]);
+// (*derivs)(x+a5*h,ytemp,ak5); Fifth step.
+// for (i=1;i<=n;i++)
+// ytemp[i]=y[i]+h*(b61*dydx[i]+b62*ak2[i]+b63*ak3[i]+b64*ak4[i]+b65*ak5[i]);
+// (*derivs)(x+a6*h,ytemp,ak6); Sixth step.
+// for (i=1;i<=n;i++) Accumulate increments with proper weights.
+// yout[i]=y[i]+h*(c1*dydx[i]+c3*ak3[i]+c4*ak4[i]+c6*ak6[i]);
+// for (i=1;i<=n;i++)
+// yerr[i]=h*(dc1*dydx[i]+dc3*ak3[i]+dc4*ak4[i]+dc5*ak5[i]+dc6*ak6[i]);
+// Estimate error as difference between fourth and fifth order methods.
+//     xtemp = 
+
+//   }
+
+// }
+
+
 Applet.prototype.TotalEnergy = function()
 {
   var tot = 0;
@@ -787,7 +878,8 @@ Applet.prototype.TotalEnergy = function()
       var dy = ci.y-cj.y;
       var r2 = dx*dx+dy*dy;
       var r = Math.sqrt(r2);
-      tot += ci.q*cj.q/r;
+      tot += 2*ci.q*2*cj.q/r; // using 3d pointlike potential
+      // tot += 2*ci.q*2*cj.q*Math.log(1/r); // using line charges
     }
   }
   return tot;
