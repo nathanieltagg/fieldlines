@@ -12,7 +12,7 @@ var max_steps = 1000;
 
 
 var Utolerance = 0.001;
-var step_equi = 0.1;
+var step_equi = 0.05;
 var max_equi_step = 100;
 
 var potential_multiple = 3;
@@ -214,11 +214,12 @@ Applet.prototype.Field = function(x,y)
     var dy = y-c.y;
     var r2 = dx*dx+dy*dy;
     var r = Math.sqrt(r2);
-    var E = c.q/r2;
+    var E = c.q/r;        // These are really charged rods in 2d space, not point charges in 3d
     // var E = c.q/r;
     Ex += dx/r*E;
     Ey += dy/r*E;
-    U += c.q/r;
+    // U += c.q/r;
+    U += c.q*Math.log(1/r);  // Potential near a charged rod; arbitrary scale.
   }
   var E2 = Ex*Ex + Ey*Ey;
   var E = Math.sqrt(E2);
@@ -711,10 +712,23 @@ Applet.prototype.FindFieldLines = function()
       while(!done) {
         np++;
         // console.log(point);
-        var newx =  point.x + point.gy * step_equi * dir;  // Not a typo. .
-        var newy =  point.y - point.gx * step_equi * dir;  // We're going perpendicular to the field!
+        // version 1: Euler.
+        var newx,newy;
+        if(this.estMode==1) {
+          newx =  point.x + point.gy * step_equi * dir;  // Not a typo. .
+          newy =  point.y - point.gx * step_equi * dir;  // We're going perpendicular to the field!
+
+        } else {// if(this.estMode==4)
+          // version 2: Runga-kutta 4th order.
+          var E2 = this.Field(x+E.gy *step_equi/2, y-E.gx *step_equi/2);
+          var E3 = this.Field(x+E2.gy*step_equi/2, y-E2.gx*step_equi/2);
+          var E4 = this.Field(x+E3.gy*step_equi  , y-E3.gx*step_equi  );
+          newx = point.x + ( E.gy + E2.gy*2 + E3.gy*2 + E4.gy )*step_equi/6;
+          newy = point.y - ( E.gx + E2.gx*2 + E3.gx*2 + E4.gx )*step_equi/6;
+
+        }
         var next_point = this.Field(newx,newy);        
-        var next_point = this.FindPositionOfU(next_point,Utarget,Utolerance); // refine
+        // var next_point = this.FindPositionOfU(next_point,Utarget,Utolerance); // refine
         
         // Check for intersection with other potentialnodes. Delete them as we go.
         for(var i=0;i<this.potentialnodes.length;i++) {
