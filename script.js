@@ -452,9 +452,9 @@ Applet.prototype.SeedNodes = function(charge,startangle)
   //     d2 = deltax*deltax + deltay*deltay;
   //     nstart++;
   //   } while ( d2 < charge.r*charge.r );
-  //
+  
   //   var angle = Math.atan2(deltay,deltax);
-  //
+  
   //   charge.nodesNeeded.push(angle);
   //   console.log("need node:",deltay,deltax,angle,nstart);
   //  }
@@ -493,7 +493,7 @@ Applet.prototype.DoCollision = function(collide,x,y)
 
 Applet.prototype.TraceFieldLine = function(fieldline)
 {
-  console.log(fieldline);
+  // console.log(fieldline);
   var x = fieldline.start_x;
   var y = fieldline.start_y;
   
@@ -532,21 +532,8 @@ Applet.prototype.TraceFieldLine = function(fieldline)
     }
     // Fixme adapative euler!
 
-    // Parasitic calculation. Find line segments that cross equipotential lines.
-    // FIXME: I could do this seperately by simply following a line that is perp to E (clockwise). Doesn't work in 3d.
-    // if(this.do_equipotential) 
-    if(!fieldline.startCharge || dist > fieldline.startCharge.r){
-      var span = SpansIntegerMultiple(lastE.U, E.U, potential_multiple);
-      if(span!=null) {
-        pnode = { U: span*potential_multiple, E1: lastE, E2: E };
-        this.potentialnodes.push(pnode);
-      }
-    }
         
-
-
     fieldline.points.push({x:x,y:y});        
-    lastE = E;
 
   
     var collide = this.FindCollision(x,y);
@@ -560,19 +547,38 @@ Applet.prototype.TraceFieldLine = function(fieldline)
         this.DoCollision(collide,x,y);
         fieldline.endCharge = collide;
         fieldline.nstep = nstep;
-        console.log("Line succeeded - hit q=",collide.q);
+        // console.log("Line succeeded - hit q=",collide.q);
         return true; // nodeFinished
       }
     }
+
+
+
               
     if(nstep>max_steps){
       fieldline.endCharge = null;
       fieldline.endAngle     = null;
       fieldline.endNodeAngle = null;
       fieldline.nstep = nstep;
-      console.log("Line succeeded - no hit");
+      // console.log("Line succeeded - no hit");
       return true;
     }  // if nstep 
+
+    // Parasitic calculation. Find line segments that cross equipotential lines.
+    // FIXME: I could do this seperately by simply following a line that is perp to E (clockwise). Doesn't work in 3d.
+    // if(this.do_equipotential) 
+    if(!collide) {
+      if(!fieldline.startCharge || dist > fieldline.startCharge.r){
+        var span = SpansIntegerMultiple(lastE.U, E.U, potential_multiple);
+        if(span!=null) {
+          pnode = { U: span*potential_multiple, E1: lastE, E2: E };
+          this.potentialnodes.push(pnode);
+        }
+      }
+    }
+
+    lastE = E;
+
   } // trace loop
 }
 
@@ -616,7 +622,7 @@ Applet.prototype.FindFieldLines = function()
   // Find fieldlines that come from outside the area, assuming there is a majority charge carrier.
   var escaping_lines = Math.abs(total_charge* source_lines_per_unit_charge);
   for(var i=0;i<escaping_lines;i++) {
-    console.log("Doing escaping line.");
+    // console.log("Doing escaping line.");
     // Find a position very far away from the charges.
     var r = Math.max(this.xmax,this.ymax) * 10;
     if(isNaN(r)) r = 10;
@@ -775,6 +781,7 @@ Applet.prototype.TotalEnergy = function()
  
 Applet.prototype.Draw = function()
 {
+  var tStart = Date.now();
   this.Clear();
   this.ctx.save();
   
@@ -823,6 +830,13 @@ Applet.prototype.Draw = function()
   if(this.do_equipotential) this.DrawEquipotentialLines();
   
   this.ctx.restore();
+  var dt = Date.now()-tStart;
+  this.fpslog = this.fpslog || [];
+  this.fpslog.push(dt);
+  if(this.fpslog.length>10) this.fpslog.shift();
+  var tot = this.fpslog.reduce((accumulator, currentValue) => accumulator + currentValue);
+  var fps = (tot/this.fpslog.length);
+  // $("#fps").text(fps.toFixed(1) + " ms")
   
 }
 
@@ -834,9 +848,9 @@ Applet.prototype.DrawFieldLines = function()
     var line = this.fieldLines[i];
     //console.log("Drawing line ",i);
     // this.ctx.strokeStyle = 'black';
-    var c = 'rgb('+ (10*i).toFixed() + ',' + (i*2).toFixed() + ','+ (50-i).toFixed() + ')';
-    this.ctx.strokeStyle =  c;
-    console.log(c);
+    // var c = 'rgb('+ (10*i).toFixed() + ',' + (i*2).toFixed() + ','+ (50-i).toFixed() + ')';
+    // this.ctx.strokeStyle =  c;
+    // console.log(c);
     // this.ctx.strokeStyle = 'blue';
     // if(line.startCharge.q >0) this.ctx.strokeStyle = 'red';
     this.ctx.beginPath();
