@@ -1,7 +1,7 @@
 Field Line Applet
 ====================
 
-Applet by Nathaniel Tagg, Physics Department, Otterbein University
+Applet by Nathaniel Tagg (https://nathanieltagg.github.io)
 
 This is a small web page that creates maps of electric field lines using Javascript in HTML5, intended for educational use.
 
